@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entries — Terminal Benefits</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --navy:#0f1f3d; --navy-mid:#1a3260; --navy-light:#253d6e;
+      --gold:#c8a84b; --gold-light:#e8d090;
+      --cream:#f8f5ee; --cream-dark:#ede9df;
+      --ink:#1c1c1c; --muted:#6b6559; --border:#d4cfc4; --white:#ffffff;
+      --green:#166534; --green-bg:#dcfce7;
+      --amber:#92600a; --amber-bg:#fef3c7;
+      --blue:#1e40af;  --blue-bg:#dbeafe;
+      --red:#991b1b;   --red-bg:#fee2e2;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Source Sans 3',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh}
+
+    /* ── HEADER ── */
+    .site-header{background:var(--navy);border-bottom:3px solid var(--gold)}
+    .header-top{display:flex;align-items:stretch;min-height:90px}
+    .header-crest{background:var(--navy-mid);width:90px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid rgba(200,168,75,0.3)}
+    .header-titles{flex:1;padding:18px 28px;display:flex;flex-direction:column;justify-content:center}
+    .header-titles h1{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:700;color:var(--white);letter-spacing:.02em;line-height:1.2}
+    .header-titles .tagline{font-size:.78rem;color:var(--gold-light);letter-spacing:.12em;text-transform:uppercase;margin-top:4px;font-weight:300}
+    .header-user{background:rgba(255,255,255,.04);border-left:1px solid rgba(200,168,75,.25);padding:14px 24px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:220px}
+    .user-label{font-size:.7rem;color:var(--gold-light);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
+    .user-name{font-size:.95rem;color:var(--white);font-weight:600;line-height:1.2}
+    .user-meta{display:flex;align-items:center;gap:8px;margin-top:4px;margin-bottom:10px}
+    .user-dept{font-size:.72rem;color:rgba(255,255,255,.45)}
+    .role-badge{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:2px}
+    .role-admin{background:rgba(200,168,75,.25);color:var(--gold)}
+    .role-officer{background:rgba(255,255,255,.1);color:rgba(255,255,255,.6)}
+    .btn-logout{background:transparent;border:1px solid rgba(200,168,75,.4);color:var(--gold-light);font-family:'Source Sans 3',sans-serif;font-size:.72rem;letter-spacing:.08em;padding:5px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+    .btn-logout:hover{background:var(--gold);color:var(--navy);border-color:var(--gold)}
+    .site-nav{background:var(--navy-mid);display:flex;padding:0 90px}
+    .site-nav button{background:none;border:none;color:rgba(255,255,255,.65);font-family:'Source Sans 3',sans-serif;font-size:.8rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;padding:11px 22px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+    .site-nav button:hover,.site-nav button.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+    /* ── PAGE ── */
+    .page-wrapper{max-width:1400px;margin:0 auto;padding:28px 20px 60px}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+    .page-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--navy)}
+    .page-title span{font-family:'Source Sans 3',sans-serif;font-size:.8rem;font-weight:500;color:var(--muted);letter-spacing:.06em;margin-left:12px;vertical-align:middle}
+    .top-actions{display:flex;gap:10px}
+    .btn-top{font-family:'Source Sans 3',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:10px 22px;cursor:pointer;transition:all .2s;border:1px solid var(--border)}
+    .btn-top-primary{background:var(--navy);color:var(--white);border-color:var(--navy);border-bottom:2px solid var(--gold)}
+    .btn-top-primary:hover{background:var(--navy-mid)}
+    .btn-top-secondary{background:var(--white);color:var(--navy)}
+    .btn-top-secondary:hover{border-color:var(--navy)}
+
+    /* ── STATS INLINE BAR ── */
+    @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+    .stats-row{display:flex;align-items:stretch;background:var(--white);border:1px solid var(--border);border-top:3px solid var(--navy);margin-bottom:20px;overflow:hidden;opacity:0;animation:fadeUp .4s .05s ease forwards}
+    .stat-card{flex:1;padding:16px 20px;border-right:1px solid var(--border);position:relative}
+    .stat-card:last-child{border-right:none}
+    .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+    .stat-card:nth-child(1)::before{background:var(--navy)}
+    .stat-card:nth-child(2)::before{background:var(--amber)}
+    .stat-card:nth-child(3)::before{background:#1a56db}
+    .stat-card:nth-child(4)::before{background:var(--green)}
+    .stat-card:nth-child(5)::before{background:var(--gold)}
+    .stat-label{font-size:.63rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;white-space:nowrap}
+    .stat-value{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:700;color:var(--navy);line-height:1}
+    .stat-sub{font-size:.68rem;color:var(--muted);margin-top:3px;white-space:nowrap}
+
+    /* ── FILTERS ── */
+    .filters-bar{background:var(--white);border:1px solid var(--border);padding:16px 24px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:2px}
+    .filter-label{font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+    .filter-input,.filter-select{font-family:'Source Sans 3',sans-serif;font-size:.85rem;color:var(--ink);background:var(--cream);border:1px solid var(--border);padding:7px 12px;outline:none;transition:border-color .15s;border-radius:0}
+    .filter-input{flex:1;min-width:140px}
+    .filter-select{min-width:120px;-webkit-appearance:none;cursor:pointer}
+    .filter-input:focus,.filter-select:focus{border-color:var(--navy-mid);background:var(--white)}
+    .filter-divider{width:1px;height:28px;background:var(--border)}
+    .entry-count{font-size:.78rem;color:var(--muted);white-space:nowrap;margin-left:auto}
+
+    /* ── TABLE ── */
+    .table-wrap{background:var(--white);border:1px solid var(--border);border-top:none;overflow-x:hidden}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    thead{background:var(--navy);position:sticky;top:0;z-index:2}
+    thead th{font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-light);padding:10px 10px;text-align:left;white-space:normal;cursor:pointer;user-select:none;transition:color .15s;line-height:1.3}
+    thead th:hover{color:var(--gold)}
+    thead th.sorted{color:var(--gold)}
+    th.sticky-col,td.sticky-col{position:sticky;right:0;z-index:3;background:var(--navy)}
+    td.sticky-col{background:var(--white);border-left:2px solid var(--border);box-shadow:-3px 0 8px rgba(0,0,0,0.06)}
+    tbody tr:hover td.sticky-col{background:#f5f2eb}
+    .sort-arr{margin-left:3px;font-size:9px;opacity:.5}
+    thead th.sorted .sort-arr{opacity:1}
+    tbody tr{border-bottom:1px solid var(--cream-dark);transition:background .12s;opacity:0;animation:rowIn .3s ease forwards}
+    @keyframes rowIn{to{opacity:1}}
+    tbody tr:hover{background:#f5f2eb}
+    tbody tr:last-child{border-bottom:none}
+    td{padding:9px 10px;font-size:.8rem;color:var(--ink);white-space:normal;word-break:break-word;vertical-align:top}
+    .td-name{font-weight:600;color:var(--navy);font-size:.82rem}
+    .td-sub{font-size:.68rem;color:var(--muted);margin-top:1px}
+    .edited-flag{font-size:.7rem;color:var(--blue);margin-top:2px}
+
+    /* badges / pills */
+    .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;font-size:.71rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:2px;white-space:nowrap}
+    .badge-dot{width:6px;height:6px;border-radius:50%}
+    .b-Pending{background:var(--amber-bg);color:var(--amber)} .bd-Pending{background:var(--amber)}
+    .b-Paid{background:var(--green-bg);color:var(--green)} .bd-Paid{background:var(--green)}
+    .b-Awaiting{background:#e8f0fe;color:#1a56db} .bd-Awaiting{background:#1a56db}
+    .b-Under-Review{background:var(--blue-bg);color:var(--blue)} .bd-Under-Review{background:var(--blue)}
+    .delay-pill{display:inline-block;padding:2px 8px;border-radius:2px;font-size:.75rem;font-weight:600}
+    .dp-ok{background:var(--green-bg);color:var(--green)}
+    .dp-warn{background:var(--amber-bg);color:var(--amber)}
+    .dp-bad{background:var(--red-bg);color:var(--red)}
+
+    /* row actions */
+    .row-acts{display:flex;gap:3px;flex-wrap:wrap}
+    .ra{border:1px solid var(--border);background:none;font-family:'Source Sans 3',sans-serif;font-size:.64rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:4px 6px;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .ra-view{color:var(--navy)}          .ra-view:hover{background:var(--navy);color:var(--white);border-color:var(--navy)}
+    .ra-edit{color:var(--amber);border-color:#e8d090}  .ra-edit:hover{background:var(--amber-bg);border-color:var(--amber)}
+    .ra-log{color:var(--blue);border-color:#bfdbfe}    .ra-log:hover{background:var(--blue-bg);border-color:var(--blue)}
+
+    /* state */
+    .state-box{padding:72px 24px;text-align:center;background:var(--white);border:1px solid var(--border);border-top:none}
+    .state-icon{font-size:2.2rem;margin-bottom:12px;opacity:.3}
+    .state-title{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--navy);margin-bottom:6px}
+    .state-sub{font-size:.85rem;color:var(--muted)}
+    .spin{display:inline-block;width:28px;height:28px;border:3px solid var(--cream-dark);border-top-color:var(--navy);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:14px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* pagination */
+    .pager{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--white);border:1px solid var(--border);border-top:none}
+    .pager-info{font-size:.78rem;color:var(--muted)}
+    .pager-btns{display:flex;gap:3px}
+    .pb{background:var(--cream);border:1px solid var(--border);color:var(--ink);font-family:'Source Sans 3',sans-serif;font-size:.77rem;font-weight:600;padding:5px 11px;cursor:pointer;transition:all .15s}
+    .pb:hover:not(:disabled){background:var(--navy);color:var(--white);border-color:var(--navy)}
+    .pb.active{background:var(--navy);color:var(--white);border-color:var(--navy)}
+    .pb:disabled{opacity:.35;cursor:not-allowed}
+
+    /* ══ MODALS ══ */
+    .overlay{position:fixed;inset:0;background:rgba(5,12,28,.65);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+    .overlay.open{display:flex}
+    .modal{background:var(--white);width:100%;max-height:92vh;overflow-y:auto;animation:mIn .25s ease;border-top:4px solid var(--navy)}
+    @keyframes mIn{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .modal-sm{max-width:680px}
+    .modal-md{max-width:800px}
+    .modal-lg{max-width:900px}
+
+    .mhead{padding:20px 28px;display:flex;align-items:flex-start;justify-content:space-between}
+    .mhead-navy{background:var(--navy)}
+    .mhead-amber{background:#7c4a00}
+    .mhead-blue{background:#1e3a7a}
+    .mtitle{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--white)}
+    .msub{font-size:.73rem;color:rgba(255,255,255,.6);margin-top:3px;letter-spacing:.05em}
+    .mclose{background:none;border:none;color:rgba(255,255,255,.5);font-size:1.3rem;cursor:pointer;line-height:1;transition:color .15s;flex-shrink:0;margin-left:16px}
+    .mclose:hover{color:var(--white)}
+    .mbody{padding:28px}
+    .mfoot{padding:14px 28px;background:var(--cream-dark);border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+    /* modal section */
+    .msec{margin-bottom:24px}
+    .msec:last-child{margin-bottom:0}
+    .msec-title{font-size:.67rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--cream-dark)}
+    .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px}
+    .mgrid-3{grid-template-columns:repeat(3,1fr)}
+    .mf label{font-size:.67rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px}
+    .mf .val{font-size:.88rem;color:var(--ink);font-weight:500}
+
+    /* delay cards */
+    .dcards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .dcard{background:var(--cream);border:1px solid var(--border);padding:12px;text-align:center}
+    .dcard .dl{font-size:.63rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .dcard .dv{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;line-height:1}
+    .dcard .du{font-size:.65rem;color:var(--muted);margin-top:2px}
+
+    /* edit form */
+    .egrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}
+    .ef{display:flex;flex-direction:column;gap:5px}
+    .ef.full{grid-column:1/-1}
+    .ef label{font-size:.67rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    .ef input,.ef select,.ef textarea{padding:8px 11px;font-family:'Source Sans 3',sans-serif;font-size:.87rem;color:var(--ink);background:var(--cream);border:1px solid var(--border);border-radius:0;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+    .ef input:focus,.ef select:focus,.ef textarea:focus{border-color:var(--navy-mid);background:var(--white);box-shadow:0 0 0 3px rgba(15,31,61,.07)}
+    .ef textarea{resize:vertical;min-height:70px}
+
+    /* buttons */
+    .btn{font-family:'Source Sans 3',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:10px 26px;cursor:pointer;transition:all .2s;border:none}
+    .btn-primary{background:var(--navy);color:var(--white);border-bottom:2px solid var(--gold)}
+    .btn-primary:hover:not(:disabled){background:var(--navy-mid);transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.55;cursor:not-allowed;transform:none}
+    .btn-ghost{background:var(--white);color:var(--muted);border:1px solid var(--border)}
+    .btn-ghost:hover{border-color:var(--navy);color:var(--navy)}
+
+    /* ── AUDIT TIMELINE ── */
+    .timeline{display:flex;flex-direction:column;gap:0;position:relative}
+    .timeline::before{content:'';position:absolute;left:113px;top:10px;bottom:10px;width:2px;background:var(--cream-dark)}
+    .tentry{display:grid;grid-template-columns:110px 1fr;gap:0 20px;padding-bottom:20px;position:relative}
+    .tentry:last-child{padding-bottom:0}
+    .ttime{text-align:right;font-size:.7rem;color:var(--muted);line-height:1.45;padding-top:2px;font-variant-numeric:tabular-nums}
+    .tdot{position:absolute;left:108px;top:5px;width:12px;height:12px;border-radius:50%;border:2px solid var(--cream);z-index:1}
+    .tdot-INSERT{background:var(--green)}
+    .tdot-UPDATE{background:var(--gold)}
+    .tcard{padding:12px 16px;border:1px solid var(--border);border-left:3px solid transparent}
+    .tcard-INSERT{border-left-color:var(--green);background:#f0fdf4}
+    .tcard-UPDATE{border-left-color:var(--gold);background:#fffbeb}
+    .tact{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+    .tact-INSERT{color:var(--green)}
+    .tact-UPDATE{color:var(--amber)}
+    .twho{font-size:.85rem;font-weight:600;color:var(--ink)}
+    .twhat{font-size:.78rem;color:var(--muted);margin-top:3px}
+    .tchange{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
+    .told{background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:2px;font-size:.75rem;text-decoration:line-through}
+    .tnew{background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:2px;font-size:.75rem}
+    .tarr{color:var(--muted);font-size:11px}
+    .tempty{text-align:center;padding:36px;color:var(--muted);font-size:.85rem}
+
+    /* toast */
+    .toast{position:fixed;bottom:26px;right:26px;color:var(--white);padding:12px 20px;font-size:.84rem;border-left:4px solid rgba(0,0,0,.15);box-shadow:0 8px 28px rgba(0,0,0,.2);transform:translateY(16px);opacity:0;transition:all .3s ease;pointer-events:none;max-width:320px;z-index:999}
+    .toast.show{transform:translateY(0);opacity:1}
+
+    @media(max-width:768px){
+      .stats-row{grid-template-columns:1fr 1fr}
+      .header-user{display:none}
+      .mgrid,.dcards,.egrid{grid-template-columns:1fr}
+      .timeline::before{left:83px}
+      .tentry{grid-template-columns:80px 1fr}
+      .tdot{left:78px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="header-top">
+    <div class="header-crest">
+      <img src="Code-of-Arms-colour.png" style="width:100px;height:50px" alt="coa">
+    </div>
+    <div class="header-titles">
+      <h1>Management Services Terminal Benefits Form</h1>
+      <div class="tagline">Ministry of Labour & Home Affairs &nbsp;·&nbsp; Management Services</div>
+    </div>
+    <div class="header-user">
+      <div class="user-label">Logged in as</div>
+      <div class="user-name" id="user-email">Loading…</div>
+      <div class="user-meta">
+        <span class="role-badge" id="user-role"></span>
+        <span class="user-dept"  id="user-dept"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <nav class="site-nav">
+    <button onclick="location.href='home.html'">Home</button>
+    <button onclick="location.href='dashboard.html'">Form</button>
+    <button class="active">Entries</button>
+    <button onclick="location.href='admin.html'" id="nav-admin" style="display:none">Admin</button>
+  </nav>
+</header>
+
+<div class="page-wrapper">
+  <div class="top-bar">
+    <div class="page-title">All Entries <span id="lbl-total"></span></div>
+    <div class="top-actions">
+      <button class="btn-top btn-top-secondary" onclick="loadEntries()">↺ Refresh</button>
+      <button class="btn-top btn-top-secondary" onclick="downloadExcel()" style="color:#166534;border-color:#86efac">⬇ Download Excel</button>
+      <button class="btn-top btn-top-primary"   onclick="location.href='dashboard.html'">+ New Application</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="s-total">—</div><div class="stat-sub">all time</div></div>
+    <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" id="s-pending">—</div><div class="stat-sub">incomplete form</div></div>
+    <div class="stat-card"><div class="stat-label">Awaiting Approval</div><div class="stat-value" id="s-awaiting">—</div><div class="stat-sub">actual date filled</div></div>
+    <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" id="s-approved">—</div><div class="stat-sub">confirmed by admin</div></div>
+    <div class="stat-card"><div class="stat-label">Avg. Processing</div><div class="stat-value" id="s-avg">—</div><div class="stat-sub">days</div></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters-bar">
+    <span class="filter-label">Filter</span>
+    <input  class="filter-input"  id="f-search" type="text" placeholder="Search name, department…" oninput="applyFilters()">
+    <div class="filter-divider"></div>
+    <select class="filter-select" id="f-status"  onchange="applyFilters()">
+      <option value="">All Statuses</option>
+      <option value="Pending">Pending</option>
+      <option value="Awaiting Approval">Awaiting Approval</option>
+      <option value="Paid">Paid</option>
+    </select>
+    <select class="filter-select" id="f-dept"    onchange="applyFilters()">
+      <option value="">All Departments</option>
+      <option value="DIC">Immigration & Citizenship</option>
+      <option value="CS">Corporate Services</option>
+      <option value="CNR">Civil & National Registration</option>
+      <option value="OSH">Occupational Health & Safety</option>
+      <option value="LSS">Labour & Social Security</option>
+      <option value="DES">Employment Services</option>
+    </select>
+    <select class="filter-select" id="f-reason"  onchange="applyFilters()">
+      <option value="">All Reasons</option>
+      <option value="Retirement">Retirement</option>
+      <option value="Resignation">Resignation</option>
+      <option value="Dismissal">Dismissal</option>
+      <option value="Death">Death</option>
+    </select>
+    <span class="entry-count" id="lbl-count"></span>
+  </div>
+
+  <div id="tbl-container"></div>
+  <div class="pager" id="pager" style="display:none">
+    <div class="pager-info" id="pager-info"></div>
+    <div class="pager-btns" id="pager-btns"></div>
+  </div>
+</div>
+
+<!-- ══ VIEW MODAL ══ -->
+<div class="overlay" id="ov-view" onclick="ovClose(event,'ov-view')">
+  <div class="modal modal-md">
+    <div class="mhead mhead-navy">
+      <div><div class="mtitle" id="v-name"></div><div class="msub" id="v-sub"></div></div>
+      <button class="mclose" onclick="closeModal('ov-view')">✕</button>
+    </div>
+    <div class="mbody" id="v-body"></div>
+    <div class="mfoot"><button class="btn btn-primary" onclick="closeModal('ov-view')">Close</button></div>
+  </div>
+</div>
+
+<!-- ══ EDIT MODAL ══ -->
+<div class="overlay" id="ov-edit" onclick="ovClose(event,'ov-edit')">
+  <div class="modal modal-lg">
+    <div class="mhead mhead-amber">
+      <div><div class="mtitle" id="e-name"></div><div class="msub" id="e-sub"></div></div>
+      <button class="mclose" onclick="closeModal('ov-edit')">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="egrid" id="e-form"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeModal('ov-edit')">Cancel</button>
+      <button class="btn btn-primary" id="btn-save" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ AUDIT LOG MODAL ══ -->
+<div class="overlay" id="ov-log" onclick="ovClose(event,'ov-log')">
+  <div class="modal modal-md">
+    <div class="mhead mhead-blue">
+      <div><div class="mtitle" id="l-name"></div><div class="msub" id="l-sub"></div></div>
+      <button class="mclose" onclick="closeModal('ov-log')">✕</button>
+    </div>
+    <div class="mbody">
+      <div style="display:flex;gap:18px;margin-bottom:20px;font-size:.75rem;color:var(--muted)">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);margin-right:5px;vertical-align:middle"></span>Created</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gold);margin-right:5px;vertical-align:middle"></span>Edited</span>
+      </div>
+      <div class="timeline" id="l-body"><div class="tempty">Loading…</div></div>
+    </div>
+    <div class="mfoot"><button class="btn btn-primary" onclick="closeModal('ov-log')">Close</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL  = 'https://qrxfpmuvtsklgitiuosh.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeGZwbXV2dHNrbGdpdGl1b3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMzE5ODksImV4cCI6MjA4ODYwNzk4OX0.8AlSa32_3TqrSAqlikg6618gAxXtmC5vVLd1acrJeMo';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── Auth guard ────────────────────────────────────────
+(async () => {
+  const { data: refreshData } = await db.auth.refreshSession();
+  const session = refreshData?.session
+    || (await db.auth.getSession()).data.session;
+  if (!session) { location.replace('index.html'); return; }
+
+  const { data: p } = await db.from('user_profiles')
+    .select('full_name,role,department_code').eq('id', session.user.id).single();
+
+  const name = p?.full_name || session.user.email;
+  const role = p?.role      || 'officer';
+  const dept = p?.department_code || '';
+
+  document.getElementById('user-email').textContent = name;
+  const rEl = document.getElementById('user-role');
+  if (rEl) { rEl.textContent = role[0].toUpperCase()+role.slice(1); rEl.className = `role-badge role-${role}`; }
+  const dEl = document.getElementById('user-dept');
+  if (dEl && dept) dEl.textContent = dept;
+
+  sessionStorage.setItem('user_name',  name);
+  sessionStorage.setItem('user_email', session.user.email);
+  sessionStorage.setItem('user_role',  role);
+  sessionStorage.setItem('user_id',    session.user.id);
+
+  // Show Admin nav link only to admins
+  if (role === 'admin') {
+    const navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) navAdmin.style.display = '';
+  }
+
+  loadEntries();
+})();
+
+async function logout() {
+  sessionStorage.clear();
+  await db.auth.signOut();
+  location.replace('index.html');
+}
+
+// ── State ─────────────────────────────────────────────
+let allRows = [], filtered = [], page = 1, editId = null;
+const PER_PAGE = 10;
+let sortCol = 'submitted_at', sortAsc = false;
+
+// ── Load ──────────────────────────────────────────────
+async function loadEntries() {
+  showLoading();
+  const { data, error } = await db.from('applications')
+    .select(`id,status,submitted_at,submitted_by,edited_by,edited_at,
+      date_officer_gave_notice,date_exited_service,date_submitted_to_mfed,
+      date_leave_days_paid,date_submitted_to_bpopf,actual_date_paid,
+      delay1_notice_to_exit,delay2_exit_to_mfed,delay3_mfed_to_leave_paid,
+      delay4_leave_paid_to_bpopf,delay5_bpopf_to_paid,total_processing_days,
+      tpt,public_holidays,comments,
+      officers(id,first_name,middle_name,surname,designation,grade,
+        departments(code,name)),
+      reasons_for_leaving(code,label)`)
+    .order('submitted_at', { ascending: false });
+
+  if (error) { showErr(error.message); return; }
+  allRows = data || [];
+  updateStats();
+  applyFilters();
+}
+
+function updateStats() {
+  document.getElementById('s-total').textContent    = allRows.length;
+  document.getElementById('s-pending').textContent  = allRows.filter(r=>r.status==='Pending').length;
+  document.getElementById('s-awaiting').textContent = allRows.filter(r=>r.status==='Awaiting Approval').length;
+  document.getElementById('s-approved').textContent = allRows.filter(r=>r.status==='Paid').length;
+  const w = allRows.filter(r=>r.total_processing_days!=null);
+  document.getElementById('s-avg').textContent = w.length
+    ? Math.round(w.reduce((s,r)=>s+r.total_processing_days,0)/w.length) : '—';
+}
+
+function applyFilters() {
+  const q = document.getElementById('f-search').value.toLowerCase();
+  const st= document.getElementById('f-status').value;
+  const dp= document.getElementById('f-dept').value;
+  const rn= document.getElementById('f-reason').value;
+
+  filtered = allRows.filter(r => {
+    const nm = name(r).toLowerCase();
+    const dc = r.officers?.departments?.code || '';
+    if (q && !nm.includes(q) && !(r.officers?.departments?.name||'').toLowerCase().includes(q)) return false;
+    if (st && r.status !== st) return false;
+    if (dp && dc !== dp) return false;
+    if (rn && (r.reasons_for_leaving?.code||r.reasons_for_leaving?.label||'') !== rn) return false;
+    return true;
+  });
+
+  filtered.sort((a,b) => {
+    let va=sv(a), vb=sv(b);
+    if(va<vb) return sortAsc?-1:1;
+    if(va>vb) return sortAsc?1:-1;
+    return 0;
+  });
+
+  page = 1;
+  document.getElementById('lbl-count').textContent = `${filtered.length} result${filtered.length!==1?'s':''}`;
+  document.getElementById('lbl-total').textContent = `${allRows.length} total`;
+  renderTable();
+}
+
+function sv(r) {
+  switch(sortCol){
+    case 'name':          return name(r).toLowerCase();
+    case 'dept':          return r.officers?.departments?.code||'';
+    case 'reason':        return r.reasons_for_leaving?.label||'';
+    case 'total_days':    return r.total_processing_days??9999;
+    case 'status':        return r.status||'';
+    case 'submitted_at':  return r.submitted_at||'';
+    default: return '';
+  }
+}
+
+function setSort(col) {
+  sortAsc = sortCol===col ? !sortAsc : true;
+  sortCol = col;
+  applyFilters();
+}
+
+function renderTable() {
+  const c = document.getElementById('tbl-container');
+  if (!filtered.length) {
+    c.innerHTML = `<div class="state-box"><div class="state-icon">🗂</div><div class="state-title">No entries found</div><div class="state-sub">Try adjusting your filters.</div></div>`;
+    document.getElementById('pager').style.display='none';
+    return;
+  }
+  const start = (page-1)*PER_PAGE;
+  const slice = filtered.slice(start, start+PER_PAGE);
+  const arr = col => `<span class="sort-arr">${sortCol===col?(sortAsc?'▲':'▼'):'⇅'}</span>`;
+  const th = (col,label) => `<th onclick="setSort('${col}')" class="${sortCol===col?'sorted':''}">${label} ${arr(col)}</th>`;
+
+  c.innerHTML = `<div class="table-wrap"><table>
+    <colgroup>
+      <col style="width:18%">
+      <col style="width:12%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:11%">
+      <col style="width:8%">
+      <col style="width:10%">
+      <col style="width:10%">
+      <col style="width:9%">
+    </colgroup>
+    <thead><tr>
+      ${th('name','Officer')}
+      ${th('dept','Dept')}
+      ${th('reason','Reason')}
+      <th>Notice Date</th>
+      <th>Actual Paid</th>
+      ${th('total_days','Days')}
+      ${th('status','Status')}
+      ${th('submitted_at','Submitted')}
+      <th class="sticky-col" style="background:var(--navy)">Actions</th>
+    </tr></thead>
+    <tbody>${slice.map((r,i)=>rowHtml(r,i)).join('')}</tbody>
+  </table></div>`;
+  renderPager();
+}
+
+function rowHtml(r, i) {
+  const o  = r.officers||{};
+  const dp = o.departments||{};
+  const d  = r.total_processing_days;
+  const dpClass = d==null?'':d<=30?'dp-ok':d<=60?'dp-warn':'dp-bad';
+  const fmt = v => v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const editedHtml = r.edited_at
+    ? `<div class="edited-flag" title="Last edited by ${r.edited_by||'?'} · ${fmt(r.edited_at)}">✎ Edited ${fmt(r.edited_at)}</div>`
+    : '';
+  return `<tr style="animation-delay:${i*.028}s">
+    <td><div class="td-name">${name(r)}</div><div class="td-sub">${o.designation||''} · ${o.grade||''}</div>${editedHtml}</td>
+    <td><div>${dp.code||'—'}</div><div class="td-sub">${dp.name||''}</div></td>
+    <td>${r.reasons_for_leaving?.label||'—'}</td>
+    <td style="font-size:.82rem">${fmt(r.date_officer_gave_notice)}</td>
+    <td style="font-size:.82rem">${fmt(r.actual_date_paid)}</td>
+    <td><span class="delay-pill ${dpClass}">${d??'—'} days</span></td>
+    <td>${badge(deriveStatus(r))}</td>
+    <td style="font-size:.8rem">${fmt(r.submitted_at)}</td>
+    <td class="sticky-col"><div class="row-acts">
+      <button class="ra ra-view" onclick="openView(${r.id})">View</button>
+      <button class="ra ra-edit" onclick="openEdit(${r.id})">Edit</button>
+      <button class="ra ra-log"  onclick="openLog(${r.id})">Log</button>
+    </div></td>
+  </tr>`;
+}
+
+// Derive display status from data:
+// - No actual_date_paid → Pending
+// - Has actual_date_paid but not yet Paid → Awaiting Approval
+// - Admin marked Paid → Paid
+function deriveStatus(r) {
+  if (r.status === 'Paid') return 'Paid';
+  if (r.actual_date_paid) return 'Awaiting Approval';
+  return 'Pending';
+}
+
+function badge(s) {
+  const k = (s||'Pending').replace(/ /g,'-');
+  return `<span class="badge b-${k}"><span class="badge-dot bd-${k}"></span>${s||'Pending'}</span>`;
+}
+
+// ── Pagination ────────────────────────────────────────
+function renderPager() {
+  const total = filtered.length, pages = Math.ceil(total/PER_PAGE);
+  const pg = document.getElementById('pager');
+  if (pages<=1) { pg.style.display='none'; return; }
+  pg.style.display='flex';
+  const s=(page-1)*PER_PAGE+1, e=Math.min(page*PER_PAGE,total);
+  document.getElementById('pager-info').textContent=`Showing ${s}–${e} of ${total}`;
+  let h = `<button class="pb" onclick="goPage(${page-1})" ${page===1?'disabled':''}>‹</button>`;
+  for (let p=1;p<=pages;p++) {
+    if (pages>7 && Math.abs(p-page)>2 && p!==1 && p!==pages) {
+      if (p===2||p===pages-1) h+=`<span style="padding:5px 3px;color:var(--muted)">…</span>`;
+      continue;
+    }
+    h+=`<button class="pb ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  h+=`<button class="pb" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>›</button>`;
+  document.getElementById('pager-btns').innerHTML=h;
+}
+
+function goPage(p) {
+  const pages=Math.ceil(filtered.length/PER_PAGE);
+  if(p<1||p>pages) return;
+  page=p; renderTable();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── VIEW ──────────────────────────────────────────────
+function openView(id) {
+  const r=allRows.find(x=>x.id===id); if(!r) return;
+  const o=r.officers||{}, dp=o.departments||{};
+  const fmt = v => v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+
+  document.getElementById('v-name').textContent = name(r);
+  document.getElementById('v-sub').textContent  = `Application #${r.id} · Submitted ${fmt(r.submitted_at)}`;
+
+  document.getElementById('v-body').innerHTML = `
+    <div class="msec">
+      <div class="msec-title">Personal Information</div>
+      <div class="mgrid">
+        ${mf('Full Name', name(r))}
+        ${mf('Designation', o.designation||'—')}
+        ${mf('Grade', o.grade||'—')}
+        ${mf('Department', dp.name||'—')}
+        ${mf('Reason for Leaving', r.reasons_for_leaving?.label||'—')}
+        ${mf('Status', badge(deriveStatus(r)))}
+      </div>
+    </div>
+    <div class="msec">
+      <div class="msec-title">Processing Dates</div>
+      <div class="mgrid">
+        ${mf('Date Gave Notice',         fmt(r.date_officer_gave_notice))}
+        ${mf('Date Exited Service',      fmt(r.date_exited_service))}
+        ${mf('Date Submitted to MFED',   fmt(r.date_submitted_to_mfed))}
+        ${mf('Date Leave Days Paid',     fmt(r.date_leave_days_paid))}
+        ${mf('Date Submitted to BPOPF',  fmt(r.date_submitted_to_bpopf))}
+        ${mf('Actual Date Paid',         fmt(r.actual_date_paid))}
+      </div>
+    </div>
+    <div class="msec">
+      <div class="msec-title">Processing Delays (days)</div>
+      <div class="dcards">
+        ${dcard('Notice → Exit',          r.delay1_notice_to_exit)}
+        ${dcard('Exit → MFED',            r.delay2_exit_to_mfed)}
+        ${dcard('MFED → Leave Paid',      r.delay3_mfed_to_leave_paid)}
+        ${dcard('Leave Paid → BPOPF',     r.delay4_leave_paid_to_bpopf)}
+        ${dcard('BPOPF → Paid',           r.delay5_bpopf_to_paid)}
+        ${dcard('Total',                  r.total_processing_days, true)}
+      </div>
+    </div>
+    ${r.tpt||r.public_holidays||r.comments ? `
+    <div class="msec">
+      <div class="msec-title">Additional Information</div>
+      <div class="mgrid">
+        ${r.tpt           ? mf('TPT', r.tpt) : ''}
+        ${r.public_holidays?mf('Public Holidays', r.public_holidays) : ''}
+        ${r.comments      ? `<div class="mf" style="grid-column:1/-1">${mf('Comments', r.comments)}</div>` : ''}
+      </div>
+    </div>` : ''}
+    <div class="msec">
+      <div class="msec-title">Record Information</div>
+      <div class="mgrid">
+        ${mf('Submitted By', r.submitted_by||'—')}
+        ${mf('Submitted At', fmt(r.submitted_at))}
+        ${r.edited_at ? mf('Last Edited By', r.edited_by||'—') : ''}
+        ${r.edited_at ? mf('Last Edited At', fmt(r.edited_at)) : ''}
+      </div>
+    </div>`;
+  openModal('ov-view');
+}
+
+function mf(label, val) {
+  return `<div class="mf"><label>${label}</label><div class="val">${val}</div></div>`;
+}
+
+function dcard(label, val, bold=false) {
+  const v = val ?? '—';
+  const col = bold ? 'var(--navy)' : val==null?'var(--muted)':val<=14?'var(--green)':val<=30?'var(--amber)':'var(--red)';
+  return `<div class="dcard"><div class="dl">${label}</div><div class="dv" style="color:${col}">${v}</div><div class="du">${val!=null?'days':''}</div></div>`;
+}
+
+// ── EDIT ──────────────────────────────────────────────
+function openEdit(id) {
+  const r=allRows.find(x=>x.id===id); if(!r) return;
+  editId = id;
+  document.getElementById('e-name').textContent = `Edit — ${name(r)}`;
+  document.getElementById('e-sub').textContent  = `Application #${id}`;
+
+  document.getElementById('e-form').innerHTML = `
+    <div class="ef">
+      <label>Status</label>
+      <select id="ef-status">
+        <option ${r.status==='Pending'           ?'selected':''}>Pending</option>
+        <option ${r.status==='Awaiting Approval' ?'selected':''}>Awaiting Approval</option>
+        <option ${r.status==='Paid'              ?'selected':''}>Paid</option>
+      </select>
+    </div>
+    <div class="ef"><label>Date Officer Gave Notice</label>   <input type="date" id="ef-dogn" value="${r.date_officer_gave_notice||''}"></div>
+    <div class="ef"><label>Date Exited Service</label>        <input type="date" id="ef-dxs"  value="${r.date_exited_service||''}"></div>
+    <div class="ef"><label>Date Submitted to MFED</label>     <input type="date" id="ef-dstm" value="${r.date_submitted_to_mfed||''}"></div>
+    <div class="ef"><label>Date Leave Days Paid</label>       <input type="date" id="ef-dldp" value="${r.date_leave_days_paid||''}"></div>
+    <div class="ef"><label>Date Submitted to BPOPF</label>    <input type="date" id="ef-dstb" value="${r.date_submitted_to_bpopf||''}"></div>
+    <div class="ef"><label>Actual Date Paid</label>           <input type="date" id="ef-adp"  value="${r.actual_date_paid||''}"></div>
+    <div class="ef"><label>TPT</label>                        <input type="text" id="ef-tpt"  value="${r.tpt||''}"></div>
+    <div class="ef"><label>Public Holidays</label>            <input type="text" id="ef-hol"  value="${r.public_holidays||''}"></div>
+    <div class="ef full"><label>Comments</label>              <textarea id="ef-cmt">${r.comments||''}</textarea></div>
+  `;
+  openModal('ov-edit');
+}
+
+async function saveEdit() {
+  const btn = document.getElementById('btn-save');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  const who = sessionStorage.getItem('user_name') || sessionStorage.getItem('user_email');
+  const now = new Date().toISOString();
+
+  const updates = {
+    status:                   document.getElementById('ef-status').value,
+    date_officer_gave_notice: document.getElementById('ef-dogn').value || null,
+    date_exited_service:      document.getElementById('ef-dxs').value  || null,
+    date_submitted_to_mfed:   document.getElementById('ef-dstm').value || null,
+    date_leave_days_paid:     document.getElementById('ef-dldp').value || null,
+    date_submitted_to_bpopf:  document.getElementById('ef-dstb').value || null,
+    actual_date_paid:         document.getElementById('ef-adp').value  || null,
+    tpt:                      document.getElementById('ef-tpt').value.trim()  || null,
+    public_holidays:          document.getElementById('ef-hol').value.trim()  || null,
+    comments:                 document.getElementById('ef-cmt').value.trim()  || null,
+    edited_by:                who,
+    edited_at:                now,
+  };
+
+  const { error } = await db.from('applications').update(updates).eq('id', editId);
+  btn.disabled=false; btn.textContent='Save Changes';
+
+  if (error) { showToast('✗ Save failed: '+error.message, true); return; }
+
+  // Write audit record manually (belt + suspenders in case DB trigger isn't set up)
+  const orig = allRows.find(x=>x.id===editId);
+  const FIELD_LABELS = {
+    status:'Status', date_officer_gave_notice:'Date Gave Notice',
+    date_exited_service:'Date Exited Service', date_submitted_to_mfed:'Date Submitted to MFED',
+    date_leave_days_paid:'Date Leave Days Paid', date_submitted_to_bpopf:'Date Submitted to BPOPF',
+    actual_date_paid:'Actual Date Paid', tpt:'TPT', public_holidays:'Public Holidays', comments:'Comments',
+  };
+  const auditRows = [];
+  for (const [field, newVal] of Object.entries(updates)) {
+    if (!FIELD_LABELS[field]) continue;
+    const oldVal = orig ? orig[field] : null;
+    if (String(oldVal||'') !== String(newVal||'')) {
+      auditRows.push({
+        application_id:  editId,
+        action:          'UPDATE',
+        changed_by_name: who,
+        field_name:      field,
+        field_label:     FIELD_LABELS[field],
+        old_value:       oldVal!=null ? String(oldVal) : null,
+        new_value:       newVal!=null ? String(newVal) : null,
+        changed_at:      now,
+      });
+    }
+  }
+  if (auditRows.length) await db.from('audit_log').insert(auditRows);
+
+  showToast(`✓ Application #${editId} saved`);
+  closeModal('ov-edit');
+  await loadEntries();
+}
+
+// ── AUDIT LOG ─────────────────────────────────────────
+async function openLog(id) {
+  const r = allRows.find(x=>x.id===id); if(!r) return;
+  document.getElementById('l-name').textContent = `Audit Log — ${name(r)}`;
+  document.getElementById('l-sub').textContent  = `Application #${id} · full change history`;
+  document.getElementById('l-body').innerHTML   = '<div class="tempty">Loading…</div>';
+  openModal('ov-log');
+
+  const { data, error } = await db
+    .from('audit_log')
+    .select('*')
+    .eq('application_id', id)
+    .order('changed_at', { ascending: false });
+
+  if (error || !data?.length) {
+    document.getElementById('l-body').innerHTML =
+      `<div class="tempty">No audit records found for this application.<br><small>Records appear here after edits are made.</small></div>`;
+    return;
+  }
+
+  const fmtDt = d => {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+      + '<br>' + dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  };
+
+  document.getElementById('l-body').innerHTML = data.map(log => `
+    <div class="tentry">
+      <div class="ttime">${fmtDt(log.changed_at)}</div>
+      <div class="tdot tdot-${log.action}"></div>
+      <div class="tcard tcard-${log.action}">
+        <div class="tact tact-${log.action}">
+          ${log.action==='INSERT' ? '✦ Record Created' : '✎ Record Edited'}
+        </div>
+        <div class="twho">${log.changed_by_name || 'Unknown user'}</div>
+        ${log.action==='UPDATE' ? `
+          <div class="twhat">Changed: <strong>${log.field_label || log.field_name || 'field'}</strong></div>
+          ${(log.old_value||log.new_value) ? `
+          <div class="tchange">
+            ${log.old_value ? `<span class="told">${log.old_value}</span><span class="tarr">→</span>` : ''}
+            <span class="tnew">${log.new_value||'(cleared)'}</span>
+          </div>` : ''}
+        ` : `<div class="twhat">Application submitted for the first time</div>`}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Modal helpers ─────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); document.body.style.overflow='hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
+function ovClose(e,id)  { if(e.target===document.getElementById(id)) closeModal(id); }
+
+// ── Utils ─────────────────────────────────────────────
+function name(r) {
+  const o=r.officers||{};
+  return [o.first_name, o.middle_name, o.surname].filter(Boolean).join(' ');
+}
+
+function showLoading() {
+  document.getElementById('tbl-container').innerHTML =
+    `<div class="state-box"><div class="spin"></div><div class="state-title">Loading entries…</div></div>`;
+}
+
+function showErr(msg) {
+  document.getElementById('tbl-container').innerHTML =
+    `<div class="state-box"><div class="state-icon">⚠</div><div class="state-title">Could not load entries</div><div class="state-sub">${msg}</div></div>`;
+}
+
+function showToast(msg, isErr=false) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=isErr?'#8b1a1a':'#2d6a4f';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+// ── Download Excel ────────────────────────────────────
+function downloadExcel() {
+  if (!allRows.length) { showToast('No data to export', true); return; }
+  const fmt = v => v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '';
+  const rows = allRows.map(r => {
+    const o  = r.officers || {};
+    const dp = o.departments || {};
+    return {
+      'Name of Officer':          [o.first_name,o.middle_name,o.surname].filter(Boolean).join(' '),
+      'Designation':              o.designation || '',
+      'Grade':                    o.grade || '',
+      'Department':               dp.name || dp.code || '',
+      'Reason for Leaving':       r.reasons_for_leaving?.label || '',
+      'Date Officer Gave Notice': fmt(r.date_officer_gave_notice),
+      'Delay 1 (days)':           r.delay1_notice_to_exit ?? '',
+      'Date Exited Service':      fmt(r.date_exited_service),
+      'Delay 2 (days)':           r.delay2_exit_to_mfed ?? '',
+      'Date Submitted to MFED':   fmt(r.date_submitted_to_mfed),
+      'Delay 3 (days)':           r.delay3_mfed_to_leave_paid ?? '',
+      'Date Leave Days Paid':     fmt(r.date_leave_days_paid),
+      'Delay 4 (days)':           r.delay4_leave_paid_to_bpopf ?? '',
+      'Date Submitted to BPOPF':  fmt(r.date_submitted_to_bpopf),
+      'Delay 5 (days)':           r.delay5_bpopf_to_paid ?? '',
+      'Actual Date Paid':         fmt(r.actual_date_paid),
+      'TPT (days)':               r.tpt ?? '',
+      'Public Holidays':          r.public_holidays || '',
+      'Comments':                 r.comments || '',
+      'Status':                   deriveStatus(r),
+      'Submitted By':             r.submitted_by || '',
+      'Submitted At':             fmt(r.submitted_at),
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:28},{wch:22},{wch:8},{wch:30},{wch:18},
+    {wch:22},{wch:14},{wch:20},{wch:14},{wch:24},
+    {wch:14},{wch:22},{wch:14},{wch:24},{wch:14},
+    {wch:18},{wch:12},{wch:16},{wch:30},{wch:18},
+    {wch:20},{wch:18}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Terminal Benefits');
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Terminal_Benefits_${date}.xlsx`);
+  showToast('✓ Excel file downloaded');
+}
+
+</script>
+</body>
+</html>
