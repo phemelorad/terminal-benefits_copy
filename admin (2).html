@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — Terminal Benefits</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --navy:#0f1f3d; --navy-mid:#1a3260; --navy-light:#253d6e;
+      --gold:#c8a84b; --gold-light:#e8d090; --gold-dim:#8a6e2e;
+      --cream:#f8f5ee; --cream-dark:#ede9df;
+      --ink:#1c1c1c; --muted:#6b6559; --border:#d4cfc4; --white:#ffffff;
+      --green:#166534; --green-bg:#dcfce7; --green-light:#f0fdf4;
+      --amber:#92600a; --amber-bg:#fef3c7;
+      --blue:#1e40af;  --blue-bg:#dbeafe;
+      --red:#991b1b;   --red-bg:#fee2e2;
+      --purple:#6b21a8; --purple-bg:#f3e8ff;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Source Sans 3',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh}
+
+    /* ── HEADER ── */
+    .site-header{background:var(--navy);border-bottom:3px solid var(--gold)}
+    .header-top{display:flex;align-items:stretch;min-height:90px}
+    .header-crest{background:var(--navy-mid);width:90px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid rgba(200,168,75,.3)}
+    .header-titles{flex:1;padding:18px 28px;display:flex;flex-direction:column;justify-content:center}
+    .header-titles h1{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:700;color:var(--white);letter-spacing:.02em;line-height:1.2}
+    .header-titles .tagline{font-size:.78rem;color:var(--gold-light);letter-spacing:.12em;text-transform:uppercase;margin-top:4px;font-weight:300}
+    .header-user{background:rgba(255,255,255,.04);border-left:1px solid rgba(200,168,75,.25);padding:14px 24px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:220px}
+    .user-label{font-size:.7rem;color:var(--gold-light);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px}
+    .user-name{font-size:.95rem;color:var(--white);font-weight:600;line-height:1.2}
+    .user-meta{display:flex;align-items:center;gap:8px;margin-top:4px;margin-bottom:10px}
+    .user-dept{font-size:.72rem;color:rgba(255,255,255,.45)}
+    .role-badge{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:2px}
+    .role-admin{background:rgba(200,168,75,.25);color:var(--gold)}
+    .role-officer{background:rgba(255,255,255,.1);color:rgba(255,255,255,.6)}
+    .role-viewer{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)}
+    .btn-logout{background:transparent;border:1px solid rgba(200,168,75,.4);color:var(--gold-light);font-family:'Source Sans 3',sans-serif;font-size:.72rem;letter-spacing:.08em;padding:5px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+    .btn-logout:hover{background:var(--gold);color:var(--navy);border-color:var(--gold)}
+    .site-nav{background:var(--navy-mid);display:flex;padding:0 90px}
+    .site-nav button{background:none;border:none;color:rgba(255,255,255,.65);font-family:'Source Sans 3',sans-serif;font-size:.8rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;padding:11px 22px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+    .site-nav button:hover,.site-nav button.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+    /* ── ADMIN BADGE ── */
+    .admin-banner{background:linear-gradient(135deg,#1a0a2e 0%,#0f1f3d 50%,#1a2e10 100%);border-bottom:1px solid rgba(200,168,75,.3);padding:14px 0}
+    .admin-banner-inner{max-width:1300px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+    .admin-badge{display:flex;align-items:center;gap:10px}
+    .admin-badge-icon{width:32px;height:32px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--navy)}
+    .admin-badge-text{font-size:.75rem;color:var(--gold-light);letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+    .admin-badge-sub{font-size:.7rem;color:rgba(255,255,255,.35);margin-top:1px}
+    .admin-warning{font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.06em}
+
+    /* ── PAGE ── */
+    .page-wrapper{max-width:1300px;margin:0 auto;padding:36px 24px 80px}
+
+    /* ── TABS ── */
+    .tab-bar{display:flex;gap:0;margin-bottom:32px;border-bottom:2px solid var(--border)}
+    .tab-btn{background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:'Source Sans 3',sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:13px 28px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
+    .tab-btn:hover{color:var(--navy)}
+    .tab-btn.active{color:var(--navy);border-bottom-color:var(--navy)}
+    .tab-count{background:var(--navy);color:var(--gold);font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:10px;min-width:20px;text-align:center}
+    .tab-count.amber{background:var(--amber-bg);color:var(--amber)}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    /* ── STATS ── */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+    .scard{background:var(--white);border:1px solid var(--border);border-top:3px solid;padding:18px 22px;opacity:0;transform:translateY(8px);animation:up .4s ease forwards}
+    .scard:nth-child(1){border-top-color:var(--amber);animation-delay:.05s}
+    .scard:nth-child(2){border-top-color:var(--green);animation-delay:.10s}
+    .scard:nth-child(3){border-top-color:var(--navy);animation-delay:.15s}
+    .scard:nth-child(4){border-top-color:var(--gold);animation-delay:.20s}
+    @keyframes up{to{opacity:1;transform:translateY(0)}}
+    .scard-label{font-size:.67rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+    .scard-value{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:var(--navy);line-height:1}
+    .scard-sub{font-size:.73rem;color:var(--muted);margin-top:4px}
+
+    /* ── SECTION HEADING ── */
+    .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+    .sec-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:600;color:var(--navy)}
+    .sec-sub{font-size:.78rem;color:var(--muted);margin-top:2px}
+    .sec-actions{display:flex;gap:8px;align-items:center}
+
+    /* ── CARD GRID (applications) ── */
+    .app-grid{display:flex;flex-direction:column;gap:12px}
+    .app-card{background:var(--white);border:1px solid var(--border);border-left:4px solid var(--amber);padding:20px 24px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;transition:box-shadow .15s;opacity:0;transform:translateY(6px);animation:up .3s ease forwards}
+    .app-card:hover{box-shadow:0 4px 20px rgba(15,31,61,.08)}
+    .app-card.approved{border-left-color:var(--green)}
+    .app-card.rejected{border-left-color:var(--red)}
+    .app-info{}
+    .app-name{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:var(--navy);margin-bottom:4px}
+    .app-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+    .app-meta-item{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+    .app-meta-item strong{color:var(--ink)}
+    .app-dates{display:flex;gap:20px;flex-wrap:wrap}
+    .app-date{font-size:.75rem;color:var(--muted)}
+    .app-date strong{display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1px;color:var(--muted)}
+    .app-date span{color:var(--ink);font-weight:500}
+    .app-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-end;min-width:200px}
+    .delay-pill{display:inline-block;padding:3px 10px;border-radius:2px;font-size:.75rem;font-weight:600;margin-bottom:6px}
+    .dp-ok{background:var(--green-bg);color:var(--green)}
+    .dp-warn{background:var(--amber-bg);color:var(--amber)}
+    .dp-bad{background:var(--red-bg);color:var(--red)}
+    .app-submitted{font-size:.72rem;color:var(--muted);text-align:right;margin-bottom:6px}
+
+    /* approval buttons */
+    .approve-row{display:flex;gap:7px;width:100%}
+    .btn-approve,.btn-reject,.btn-review{font-family:'Source Sans 3',sans-serif;font-size:.73rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .2s;border:none;flex:1;text-align:center}
+    .btn-approve{background:var(--green);color:var(--white)}
+    .btn-approve:hover{background:#14532d}
+    .btn-reject{background:var(--white);color:var(--red);border:1px solid var(--red)}
+    .btn-reject:hover{background:var(--red-bg)}
+    .btn-review{background:var(--white);color:var(--blue);border:1px solid #93c5fd}
+    .btn-review:hover{background:var(--blue-bg)}
+    .approved-stamp{display:inline-flex;align-items:center;gap:6px;background:var(--green-bg);color:var(--green);font-size:.75rem;font-weight:700;letter-spacing:.08em;padding:7px 14px;text-transform:uppercase}
+    .rejected-stamp{display:inline-flex;align-items:center;gap:6px;background:var(--red-bg);color:var(--red);font-size:.75rem;font-weight:700;letter-spacing:.08em;padding:7px 14px;text-transform:uppercase}
+    .review-stamp{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);color:var(--blue);font-size:.75rem;font-weight:700;letter-spacing:.08em;padding:7px 14px;text-transform:uppercase}
+
+    /* filter bar */
+    .filter-bar{background:var(--white);border:1px solid var(--border);padding:14px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:2px}
+    .fl{font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+    .fi,.fs{font-family:'Source Sans 3',sans-serif;font-size:.84rem;color:var(--ink);background:var(--cream);border:1px solid var(--border);padding:7px 11px;outline:none;transition:border-color .15s;border-radius:0;-webkit-appearance:none}
+    .fi{flex:1;min-width:160px}
+    .fs{min-width:140px;cursor:pointer}
+    .fi:focus,.fs:focus{border-color:var(--navy-mid);background:var(--white)}
+    .fcount{font-size:.77rem;color:var(--muted);margin-left:auto;white-space:nowrap}
+
+    /* empty */
+    .empty-state{background:var(--white);border:1px solid var(--border);padding:64px 24px;text-align:center}
+    .empty-icon{font-size:2.4rem;margin-bottom:12px;opacity:.25}
+    .empty-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--navy);margin-bottom:6px}
+    .empty-sub{font-size:.84rem;color:var(--muted)}
+
+    /* ── USERS TABLE ── */
+    .users-table-wrap{background:var(--white);border:1px solid var(--border);overflow-x:auto}
+    table{width:100%;border-collapse:collapse}
+    thead{background:var(--navy)}
+    thead th{font-size:.67rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-light);padding:12px 16px;text-align:left;white-space:nowrap}
+    tbody tr{border-bottom:1px solid var(--cream-dark);transition:background .12s;opacity:0;animation:up .3s ease forwards}
+    tbody tr:hover{background:#f8f5ee}
+    tbody tr:last-child{border-bottom:none}
+    td{padding:13px 16px;font-size:.85rem;vertical-align:middle}
+    .u-name{font-weight:600;color:var(--navy)}
+    .u-email{font-size:.77rem;color:var(--muted);margin-top:2px}
+    .u-dept{font-size:.77rem;color:var(--muted)}
+    .u-date{font-size:.78rem;color:var(--muted)}
+    .u-active{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+    .u-active-y{background:var(--green)}
+    .u-active-n{background:var(--red)}
+
+    /* role select inline */
+    .role-select{font-family:'Source Sans 3',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:5px 28px 5px 10px;border:1px solid var(--border);background:var(--cream);cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;border-radius:0;transition:all .2s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%236b6559' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+    .role-select:focus{border-color:var(--navy-mid);background-color:var(--white)}
+    .role-select.admin-sel{border-color:var(--gold-dim);color:var(--amber)}
+    .role-select.officer-sel{color:var(--navy)}
+    .role-select.viewer-sel{color:var(--muted)}
+    .role-select.changed{border-color:var(--green);background-color:var(--green-bg)}
+
+    .btn-save-role{font-family:'Source Sans 3',sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:5px 12px;cursor:pointer;border:none;background:var(--navy);color:var(--white);transition:all .2s;display:none}
+    .btn-save-role.show{display:inline-block}
+    .btn-save-role:hover{background:var(--navy-mid)}
+
+    .toggle-active{background:none;border:1px solid var(--border);font-family:'Source Sans 3',sans-serif;font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:4px 10px;cursor:pointer;transition:all .2s;color:var(--muted)}
+    .toggle-active:hover{border-color:var(--navy);color:var(--navy)}
+    .toggle-active.deactivate{color:var(--red);border-color:var(--red)}
+    .toggle-active.deactivate:hover{background:var(--red-bg)}
+    .toggle-active.activate{color:var(--green);border-color:var(--green)}
+    .toggle-active.activate:hover{background:var(--green-bg)}
+
+    /* ── MODALS ── */
+    .overlay{position:fixed;inset:0;background:rgba(5,12,28,.65);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+    .overlay.open{display:flex}
+    .modal{background:var(--white);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:mIn .25s ease;border-top:4px solid var(--navy)}
+    @keyframes mIn{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .mhead{padding:20px 28px;display:flex;align-items:flex-start;justify-content:space-between}
+    .mtitle{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--white)}
+    .msub{font-size:.73rem;color:rgba(255,255,255,.55);margin-top:3px}
+    .mclose{background:none;border:none;color:rgba(255,255,255,.45);font-size:1.3rem;cursor:pointer;line-height:1;transition:color .15s;margin-left:16px;flex-shrink:0}
+    .mclose:hover{color:var(--white)}
+    .mbody{padding:26px 28px}
+    .mfoot{padding:14px 28px;background:var(--cream-dark);border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+    .btn-primary{font-family:'Source Sans 3',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:10px 26px;cursor:pointer;transition:all .2s;background:var(--navy);color:var(--white);border:none;border-bottom:2px solid var(--gold)}
+    .btn-primary:hover:not(:disabled){background:var(--navy-mid);transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .btn-ghost{font-family:'Source Sans 3',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:10px 22px;cursor:pointer;transition:all .2s;background:var(--white);color:var(--muted);border:1px solid var(--border)}
+    .btn-ghost:hover{border-color:var(--navy);color:var(--navy)}
+
+    /* confirm modal fields */
+    .conf-field{margin-bottom:14px}
+    .conf-label{font-size:.68rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+    .conf-val{font-size:.92rem;color:var(--ink);font-weight:500}
+    .conf-val.highlight{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--navy)}
+    .conf-textarea{width:100%;padding:9px 12px;font-family:'Source Sans 3',sans-serif;font-size:.87rem;color:var(--ink);background:var(--cream);border:1px solid var(--border);border-radius:0;outline:none;resize:vertical;min-height:72px;margin-top:4px}
+    .conf-textarea:focus{border-color:var(--navy-mid);background:var(--white)}
+
+    /* toast */
+    .toast{position:fixed;bottom:24px;right:24px;color:var(--white);padding:12px 20px;font-size:.84rem;border-left:4px solid rgba(0,0,0,.15);box-shadow:0 8px 28px rgba(0,0,0,.2);transform:translateY(14px);opacity:0;transition:all .3s ease;pointer-events:none;max-width:320px;z-index:999}
+    .toast.show{transform:translateY(0);opacity:1}
+
+    /* spin */
+    .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:var(--white);border-radius:50%;animation:spinning .6s linear infinite;vertical-align:middle}
+    @keyframes spinning{to{transform:rotate(360deg)}}
+
+    @media(max-width:768px){
+      .stats-row{grid-template-columns:1fr 1fr}
+      .header-user{display:none}
+      .app-card{grid-template-columns:1fr}
+      .app-actions{align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="header-top">
+    <div class="header-crest">
+      <img src="Code-of-Arms-colour.png" style="width:100px;height:50px" alt="coa">
+    </div>
+    <div class="header-titles">
+      <h1>Management Services Terminal Benefits Form</h1>
+      <div class="tagline">Ministry of Labour & Home Affairs &nbsp;·&nbsp; Management Services</div>
+    </div>
+    <div class="header-user">
+      <div class="user-label">Logged in as</div>
+      <div class="user-name" id="user-email">Loading…</div>
+      <div class="user-meta">
+        <span class="role-badge" id="user-role"></span>
+        <span class="user-dept"  id="user-dept"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <nav class="site-nav">
+    <button onclick="location.href='home.html'">Home</button>
+    <button onclick="location.href='dashboard.html'">Form</button>
+    <button onclick="location.href='status.html'">Entries</button>
+    <button class="active" id="nav-admin" style="display:none">Admin</button>
+  </nav>
+</header>
+
+<!-- ADMIN BANNER -->
+<div class="admin-banner">
+  <div class="admin-banner-inner">
+    <div class="admin-badge">
+      <div class="admin-badge-icon">⚙</div>
+      <div>
+        <div class="admin-badge-text">Administration Panel</div>
+        <div class="admin-badge-sub">Restricted access — changes take effect immediately</div>
+      </div>
+    </div>
+    <div class="admin-warning">Only administrators may access this page</div>
+  </div>
+</div>
+
+<div class="page-wrapper">
+
+  <!-- STATS ROW -->
+  <div class="stats-row" id="stats-row">
+    <div class="scard"><div class="scard-label">Pending Approval</div><div class="scard-value" id="s-pending">—</div><div class="scard-sub">awaiting action</div></div>
+    <div class="scard"><div class="scard-label">Approved</div><div class="scard-value" id="s-approved">—</div><div class="scard-sub">this period</div></div>
+    <div class="scard"><div class="scard-label">Total Users</div><div class="scard-value" id="s-users">—</div><div class="scard-sub">registered</div></div>
+    <div class="scard"><div class="scard-label">Admins</div><div class="scard-value" id="s-admins">—</div><div class="scard-sub">with full access</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('applications')" id="tab-apps">
+      Applications
+      <span class="tab-count amber" id="tc-pending">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('users')" id="tab-users">
+      User Management
+      <span class="tab-count" id="tc-users">0</span>
+    </button>
+  </div>
+
+  <!-- ══ TAB: APPLICATIONS ══ -->
+  <div class="tab-panel active" id="panel-applications">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">Application Approvals</div>
+        <div class="sec-sub">Review and approve or reject submitted terminal benefit applications</div>
+      </div>
+      <div class="sec-actions">
+        <select class="fs" id="app-status-filter" onchange="renderApps()">
+          <option value="">All Statuses</option>
+          <option value="Awaiting Approval" selected>Awaiting Approval</option>
+          <option value="Pending">Pending</option>
+          <option value="Paid">Paid</option>
+        </select>
+        <select class="fs" id="app-dept-filter" onchange="renderApps()">
+          <option value="">All Departments</option>
+          <option value="DIC">Immigration & Citizenship</option>
+          <option value="CS">Corporate Services</option>
+          <option value="CNR">Civil & National Registration</option>
+          <option value="OSH">Occupational Health & Safety</option>
+          <option value="LSS">Labour & Social Security</option>
+          <option value="DES">Employment Services</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="apps-container">
+      <div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-title">Loading applications…</div></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB: USERS ══ -->
+  <div class="tab-panel" id="panel-users">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">User Management</div>
+        <div class="sec-sub">Assign roles and manage access for registered users</div>
+      </div>
+      <div class="sec-actions">
+        <input class="fi" id="user-search" type="text" placeholder="Search by name or email…" oninput="renderUsers()" style="min-width:220px">
+        <select class="fs" id="user-role-filter" onchange="renderUsers()">
+          <option value="">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="officer">Officer</option>
+          <option value="viewer">Viewer</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="users-container">
+      <div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-title">Loading users…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- CONFIRM MODAL (approve/reject) -->
+<div class="overlay" id="ov-confirm" onclick="ovClose(event,'ov-confirm')">
+  <div class="modal">
+    <div class="mhead" id="conf-head" style="background:var(--green)">
+      <div><div class="mtitle" id="conf-title">Confirm Action</div><div class="msub" id="conf-sub"></div></div>
+      <button class="mclose" onclick="closeModal('ov-confirm')">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="conf-field"><div class="conf-label">Officer</div><div class="conf-val highlight" id="conf-name"></div></div>
+      <div class="conf-field"><div class="conf-label">Department</div><div class="conf-val" id="conf-dept"></div></div>
+      <div class="conf-field"><div class="conf-label">Submitted</div><div class="conf-val" id="conf-date"></div></div>
+      <div class="conf-field">
+        <div class="conf-label">Notes / Reason <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+        <textarea class="conf-textarea" id="conf-notes" placeholder="Add notes for this decision…"></textarea>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn-ghost" onclick="closeModal('ov-confirm')">Cancel</button>
+      <button class="btn-primary" id="conf-btn" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL  = 'https://qrxfpmuvtsklgitiuosh.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeGZwbXV2dHNrbGdpdGl1b3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMzE5ODksImV4cCI6MjA4ODYwNzk4OX0.8AlSa32_3TqrSAqlikg6618gAxXtmC5vVLd1acrJeMo';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let apps = [], users = [], pendingAction = null, currentUser = null;
+
+// ── Deny access — shows lockscreen and kills all data functions
+function denyAccess(reason) {
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
+                background:linear-gradient(135deg,#0c1220 0%,#0f1f3d 100%);
+                font-family:'Source Sans 3',sans-serif">
+      <div style="text-align:center;color:white;padding:48px;max-width:420px">
+        <div style="font-size:3.5rem;margin-bottom:18px">🔒</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.9rem;margin-bottom:10px;color:#fff">
+          Access Denied
+        </div>
+        <div style="color:rgba(255,255,255,.45);margin-bottom:8px;font-size:.9rem;line-height:1.6">
+          ${reason}
+        </div>
+        <div style="color:rgba(255,255,255,.25);font-size:.75rem;margin-bottom:32px;
+                    letter-spacing:.08em;text-transform:uppercase">
+          This page is restricted to administrators only
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button onclick="location.href='dashboard.html'"
+                  style="background:#c8a84b;color:#0f1f3d;border:none;padding:12px 28px;
+                         font-family:'Source Sans 3',sans-serif;font-size:.82rem;font-weight:700;
+                         letter-spacing:.1em;text-transform:uppercase;cursor:pointer">
+            Dashboard
+          </button>
+          <button onclick="signOutAndRedirect()"
+                  style="background:transparent;color:rgba(255,255,255,.5);
+                         border:1px solid rgba(255,255,255,.2);padding:12px 28px;
+                         font-family:'Source Sans 3',sans-serif;font-size:.82rem;font-weight:600;
+                         letter-spacing:.1em;text-transform:uppercase;cursor:pointer">
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function signOutAndRedirect() {
+  await db.auth.signOut();
+  location.replace('index.html');
+}
+
+// ── AUTH GUARD — verified against live Supabase session ───────
+// The role check is performed server-side via RLS:
+// user_profiles rows are only returned if auth.uid() matches AND role = 'admin'
+// (enforced by the admin_read_own_role RLS policy in admin_setup.sql)
+// So if the SELECT returns a row with role='admin', the session IS an admin.
+// Tampering with sessionStorage or cookies cannot bypass this.
+(async () => {
+  // Step 1 — force a fresh token from Supabase Auth server
+  // getSession() reads from localStorage and can be stale.
+  // refreshSession() makes a real network call and returns the
+  // latest JWT — essential after a role change in the DB.
+  const { data: refreshData, error: refreshErr } = await db.auth.refreshSession();
+  const session = refreshData?.session;
+
+  if (refreshErr || !session) {
+    // Fallback: try getSession in case refresh fails (e.g. offline)
+    const { data:{ session: fallback } } = await db.auth.getSession();
+    if (!fallback) { location.replace('index.html'); return; }
+  }
+
+  if (!session) { location.replace('index.html'); return; }
+
+  // Step 2 — read role from user_profiles using the freshly-issued JWT
+  const { data: p, error: profileErr } = await db
+    .from('user_profiles')
+    .select('full_name, role, department_code, is_active')
+    .eq('id', session.user.id)
+    .single();
+
+  // Debug: open browser DevTools u2192 Console to see these values
+  console.log("[Admin Auth] uid:", session.user.id);
+  console.log("[Admin Auth] email:", session.user.email);
+  console.log("[Admin Auth] profile from DB:", JSON.stringify(p));
+  console.log("[Admin Auth] profile error:", profileErr);
+
+  // Step 3 — must be active admin. Any other role is refused.
+  if (profileErr || !p || p.role !== 'admin') {
+    denyAccess(
+      p
+        ? `You are signed in as <strong>${p.full_name || session.user.email}</strong> with role <strong>${p.role || 'unknown'}</strong>. Admin credentials are required.`
+        : 'Your account profile could not be verified.'
+    );
+    return;
+  }
+
+  // Step 4 — account must not be deactivated
+  if (p.is_active === false) {
+    denyAccess('Your account has been deactivated. Contact an administrator.');
+    return;
+  }
+
+  // ✅ Verified admin — reveal nav + continue
+  const navAdmin = document.getElementById('nav-admin');
+  if (navAdmin) navAdmin.style.display = '';
+
+  currentUser = { ...p, id: session.user.id, email: session.user.email };
+
+  const name = p.full_name || session.user.email;
+  sessionStorage.setItem('user_name',  name);
+  sessionStorage.setItem('user_email', session.user.email);
+  sessionStorage.setItem('user_role',  'admin');
+  sessionStorage.setItem('user_id',    session.user.id);
+
+  document.getElementById('user-email').textContent = name;
+  const rEl = document.getElementById('user-role');
+  rEl.textContent = 'Admin'; rEl.className = 'role-badge role-admin';
+  const dEl = document.getElementById('user-dept');
+  if (dEl && p.department_code) dEl.textContent = p.department_code;
+
+  await Promise.all([loadApps(), loadUsers()]);
+})();
+
+async function logout() {
+  sessionStorage.clear();
+  await db.auth.signOut();
+  location.replace('index.html');
+}
+
+// ── TABS ──────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + (tab === 'applications' ? 'apps' : 'users')).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════
+//  APPLICATIONS TAB
+// ══════════════════════════════════════════════════════
+function deriveStatus(a) {
+  if (!a) return 'Pending';
+  if (a.status === 'Paid') return 'Paid';
+  if (a.actual_date_paid) return 'Awaiting Approval';
+  return 'Pending';
+}
+
+async function loadApps() {
+  const { data, error } = await db.from('applications')
+    .select(`id,status,submitted_at,submitted_by,edited_by,edited_at,comments,
+      date_officer_gave_notice,actual_date_paid,total_processing_days,
+      officers(first_name,middle_name,surname,designation,grade,
+        departments(code,name)),
+      reasons_for_leaving(label)`)
+    .order('submitted_at', { ascending: false });
+
+  if (error) { console.error(error); return; }
+  apps = data || [];
+  updateStats();
+  renderApps();
+}
+
+function updateStats() {
+  const pending  = apps.filter(a=>deriveStatus(a)==='Awaiting Approval').length;
+  const approved = apps.filter(a=>a.status==='Paid').length;
+  document.getElementById('s-pending').textContent  = pending;
+  document.getElementById('s-approved').textContent = approved;
+  document.getElementById('tc-pending').textContent = pending;
+}
+
+function renderApps() {
+  const statusF = document.getElementById('app-status-filter').value;
+  const deptF   = document.getElementById('app-dept-filter').value;
+
+  let filtered = apps.filter(a => {
+    if (statusF && deriveStatus(a) !== statusF) return false;
+    if (deptF   && (a.officers?.departments?.code||'') !== deptF) return false;
+    return true;
+  });
+
+  const c = document.getElementById('apps-container');
+
+  if (!filtered.length) {
+    c.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><div class="empty-title">No applications match this filter</div><div class="empty-sub">Change the filters above to see more records.</div></div>`;
+    return;
+  }
+
+  c.innerHTML = `<div class="app-grid">${filtered.map((a,i) => appCardHtml(a,i)).join('')}</div>`;
+}
+
+function appCardHtml(a, i) {
+  const o  = a.officers||{}, dp = o.departments||{};
+  const nm = [o.first_name, o.middle_name, o.surname].filter(Boolean).join(' ');
+  const fmt = v => v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const d   = a.total_processing_days;
+  const dpC = d==null?'':d<=30?'dp-ok':d<=60?'dp-warn':'dp-bad';
+  const derived = deriveStatus(a); const stClass = derived==='Paid'?'approved':derived==='Pending'?'':'';
+
+  let actionHtml;
+  const dStatus = deriveStatus(a);
+  if (dStatus === 'Awaiting Approval') {
+    actionHtml = `<button class="btn-approve" onclick="promptAction(${a.id},'Paid')" style="width:100%">✓ Mark as Paid</button>`;
+  } else if (dStatus === 'Paid') {
+    actionHtml = `<span class="approved-stamp">✓ Paid</span>
+      <button class="btn-review" style="margin-top:6px;width:100%;font-size:.7rem;padding:5px" onclick="promptAction(${a.id},'Awaiting Approval')">↩ Revert to Awaiting</button>`;
+  } else {
+    actionHtml = `<span style="font-size:.75rem;color:var(--muted);display:block;padding:8px 0;text-align:center">Awaiting<br>Actual Date Paid</span>`;
+  }
+
+  return `<div class="app-card ${stClass}" style="animation-delay:${i*.04}s">
+    <div class="app-info">
+      <div class="app-name">${nm||'—'}</div>
+      <div class="app-meta">
+        <span class="app-meta-item">🏛 <strong>${dp.name||dp.code||'—'}</strong></span>
+        <span class="app-meta-item">📋 ${a.reasons_for_leaving?.label||'—'}</span>
+        <span class="app-meta-item">👤 ${o.designation||''} · ${o.grade||''}</span>
+        ${d!=null?`<span class="delay-pill ${dpC}">${d} days total</span>`:''}
+      </div>
+      <div class="app-dates">
+        <div class="app-date"><strong>Date Gave Notice</strong><span>${fmt(a.date_officer_gave_notice)}</span></div>
+        <div class="app-date"><strong>Actual Date Paid</strong><span>${fmt(a.actual_date_paid)}</span></div>
+        <div class="app-date"><strong>Submitted By</strong><span>${a.submitted_by||'—'}</span></div>
+      </div>
+    </div>
+    <div class="app-actions">
+      <div class="app-submitted">Submitted ${fmt(a.submitted_at)}</div>
+      ${actionHtml}
+    </div>
+  </div>`;
+}
+
+// confirm action modal
+function promptAction(appId, newStatus) {
+  const a = apps.find(x=>x.id===appId); if(!a) return;
+  const o  = a.officers||{}, dp = o.departments||{};
+  const nm = [o.first_name, o.middle_name, o.surname].filter(Boolean).join(' ');
+  const fmt = v => v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+
+  pendingAction = { appId, newStatus };
+
+  const head = document.getElementById('conf-head');
+  head.style.background = newStatus==='Paid'?'#166534':'#7a5200';
+  document.getElementById('conf-title').textContent =
+    newStatus==='Paid'?'Mark as Paid':'Revert to Awaiting Approval';
+  document.getElementById('conf-sub').textContent =
+    `Application #${appId} · This action is logged`;
+  document.getElementById('conf-name').textContent = nm;
+  document.getElementById('conf-dept').textContent = dp.name||dp.code||'—';
+  document.getElementById('conf-date').textContent = fmt(a.submitted_at);
+  document.getElementById('conf-notes').value = '';
+
+  const btn = document.getElementById('conf-btn');
+  btn.textContent = newStatus==='Paid'?'✓ Confirm Paid':'↩ Revert';
+  btn.style.background = newStatus==='Paid'?'#166534':'#7a5200';
+  btn.style.borderBottomColor = newStatus==='Paid'?'#14532d':'#5a3d00';
+
+  openModal('ov-confirm');
+}
+
+async function confirmAction() {
+  if (!pendingAction) return;
+  const { appId, newStatus } = pendingAction;
+  const notes = document.getElementById('conf-notes').value.trim();
+  const who   = sessionStorage.getItem('user_name');
+  const now   = new Date().toISOString();
+
+  const btn = document.getElementById('conf-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin"></span> Saving…`;
+
+  const updates = {
+    status:    newStatus,
+    edited_by: who,
+    edited_at: now,
+    ...(notes ? { comments: notes } : {}),
+  };
+
+  const { error } = await db.from('applications').update(updates).eq('id', appId);
+
+  // Write to audit log
+  await db.from('audit_log').insert({
+    application_id:  appId,
+    action:          'UPDATE',
+    changed_by_name: who,
+    field_name:      'status',
+    field_label:     'Status',
+    old_value:       deriveStatus(apps.find(a=>a.id===appId)) || null,
+    new_value:       newStatus,
+    changed_at:      now,
+  });
+
+  btn.disabled = false; btn.textContent = 'Confirm';
+
+  if (error) { showToast('✗ Failed: '+error.message, true); return; }
+
+  showToast(`✓ Application #${appId} marked as ${newStatus}`);
+  closeModal('ov-confirm');
+  pendingAction = null;
+  await loadApps();
+}
+
+// ══════════════════════════════════════════════════════
+//  USERS TAB
+// ══════════════════════════════════════════════════════
+async function loadUsers() {
+  const { data, error } = await db.from('admin_user_profiles')
+    .select('id,full_name,role,department_code,is_active,last_login,created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error(error); return; }
+  users = data || [];
+
+  document.getElementById('s-users').textContent  = users.length;
+  document.getElementById('s-admins').textContent = users.filter(u=>u.role==='admin').length;
+  document.getElementById('tc-users').textContent = users.length;
+
+  renderUsers();
+}
+
+function renderUsers() {
+  const q    = (document.getElementById('user-search').value||'').toLowerCase();
+  const roleF= document.getElementById('user-role-filter').value;
+
+  let filtered = users.filter(u => {
+    if (q && !(u.full_name||'').toLowerCase().includes(q) && !(u.id||'').toLowerCase().includes(q)) return false;
+    if (roleF && u.role !== roleF) return false;
+    return true;
+  });
+
+  const c = document.getElementById('users-container');
+
+  if (!filtered.length) {
+    c.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No users found</div><div class="empty-sub">Try adjusting search or filter.</div></div>`;
+    return;
+  }
+
+  c.innerHTML = `<div class="users-table-wrap"><table>
+    <thead><tr>
+      <th>User</th>
+      <th>Department</th>
+      <th>Current Role</th>
+      <th>Change Role</th>
+      <th>Last Login</th>
+      <th>Active</th>
+      <th>Action</th>
+    </tr></thead>
+    <tbody>${filtered.map((u,i) => userRowHtml(u,i)).join('')}</tbody>
+  </table></div>`;
+}
+
+function userRowHtml(u, i) {
+  const fmt = v => v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'Never';
+  const isMe = currentUser && u.id === currentUser.id;
+  const active = u.is_active !== false;
+
+  const roleClass = u.role==='admin'?'admin-sel':u.role==='viewer'?'viewer-sel':'officer-sel';
+
+  return `<tr style="animation-delay:${i*.03}s;opacity:${active?1:.55}">
+    <td>
+      <div class="u-name">${u.full_name||'—'} ${isMe?'<span style="font-size:.65rem;color:var(--gold);background:rgba(200,168,75,.15);padding:1px 6px;margin-left:6px">YOU</span>':''}</div>
+      <div class="u-email" style="font-size:.72rem;color:var(--muted);margin-top:2px">${u.id?.substring(0,8)||''}…</div>
+    </td>
+    <td><div class="u-dept">${u.department_code||'—'}</div></td>
+    <td>
+      <span class="role-badge ${u.role==='admin'?'role-admin':u.role==='viewer'?'role-viewer':'role-officer'}"
+            style="background:${u.role==='admin'?'rgba(200,168,75,.15)':u.role==='viewer'?'#f3f4f6':'rgba(15,31,61,.08)'};color:${u.role==='admin'?'#92600a':u.role==='viewer'?'#6b7280':'var(--navy)'}">
+        ${u.role||'officer'}
+      </span>
+    </td>
+    <td>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select class="role-select ${roleClass}" id="rs-${u.id}"
+          onchange="roleChanged('${u.id}')"
+          ${isMe?'disabled title="You cannot change your own role"':''}>
+          <option value="admin"   ${u.role==='admin'  ?'selected':''}>Admin</option>
+          <option value="officer" ${u.role==='officer'?'selected':''}>Officer</option>
+          <option value="viewer"  ${u.role==='viewer' ?'selected':''}>Viewer</option>
+        </select>
+        <button class="btn-save-role" id="rsb-${u.id}" onclick="saveRole('${u.id}')">Save</button>
+      </div>
+    </td>
+    <td><div class="u-date">${fmt(u.last_login)}</div></td>
+    <td>
+      <span class="u-active ${active?'u-active-y':'u-active-n'}"></span>
+      ${active?'Active':'Inactive'}
+    </td>
+    <td>
+      ${!isMe ? `
+        <button class="toggle-active ${active?'deactivate':'activate'}"
+                onclick="toggleActive('${u.id}', ${!active})">
+          ${active?'Deactivate':'Activate'}
+        </button>` : '<span style="font-size:.72rem;color:var(--muted)">—</span>'}
+    </td>
+  </tr>`;
+}
+
+function roleChanged(userId) {
+  const sel = document.getElementById('rs-'+userId);
+  const btn = document.getElementById('rsb-'+userId);
+  btn.classList.add('show');
+  const orig = users.find(u=>u.id===userId)?.role;
+  sel.classList.toggle('changed', sel.value !== orig);
+}
+
+async function saveRole(userId) {
+  const sel = document.getElementById('rs-'+userId);
+  const btn = document.getElementById('rsb-'+userId);
+  const newRole = sel.value;
+
+  btn.textContent = '…'; btn.disabled = true;
+
+  const { error } = await db.from('admin_user_profiles')
+    .update({ role: newRole })
+    .eq('id', userId);
+
+  btn.textContent='Save'; btn.disabled=false;
+
+  if (error) { showToast('✗ Failed: '+error.message, true); return; }
+
+  const u = users.find(x=>x.id===userId);
+  if (u) u.role = newRole;
+  sel.classList.remove('changed');
+  btn.classList.remove('show');
+
+  document.getElementById('s-admins').textContent = users.filter(u=>u.role==='admin').length;
+  showToast(`✓ Role updated to "${newRole}"`);
+  renderUsers();
+}
+
+async function toggleActive(userId, makeActive) {
+  const { error } = await db.from('admin_user_profiles')
+    .update({ is_active: makeActive })
+    .eq('id', userId);
+
+  if (error) { showToast('✗ Failed: '+error.message, true); return; }
+
+  const u = users.find(x=>x.id===userId);
+  if (u) u.is_active = makeActive;
+
+  showToast(`✓ User ${makeActive ? 'activated' : 'deactivated'}`);
+  renderUsers();
+}
+
+// ── Helpers ───────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); document.body.style.overflow='hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
+function ovClose(e,id)  { if(e.target===document.getElementById(id)) closeModal(id); }
+
+function showToast(msg, isErr=false) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=isErr?'#8b1a1a':'#2d6a4f';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),4000);
+}
+</script>
+</body>
+</html>
