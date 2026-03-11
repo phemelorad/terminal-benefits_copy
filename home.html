@@ -375,12 +375,12 @@
     </div>
   </div>
 
-  <!-- Debug Panel (remove after fix) -->
+  <!-- Debug Panel (remove after fix)
  <div id="debug-panel" style="background:#1a0a00;color:#fbbf24;font-family:monospace;font-size:12px;
     padding:14px 20px;margin-bottom:16px;border:1px solid #c8a84b;display:none">
     <strong>🔍 Debug Info</strong><br>
     <span id="debug-text">Loading…</span>
-  </div> 
+  </div>  -->
 
   <!-- Ministry Target Meter -->
   <div class="target-banner fade-in">
@@ -667,16 +667,16 @@ async function loadDashboard() {
   console.log('[Dashboard] allApps.length:', allApps.length);
 
   // Show debug panel
-  const dbgPanel = document.getElementById('debug-panel');
-  const dbgText  = document.getElementById('debug-text');
-  dbgPanel.style.display = 'block';
-  dbgText.innerHTML =
-    `Rows in DB (count query): <b>${count ?? 'error: '+countErr?.message}</b><br>` +
-    `Rows returned by full query: <b>${allApps.length}</b><br>` +
-    `Query error: <b>${error?.message || 'none'}</b><br>` +
-    `First row tpt: <b>${allApps[0]?.tpt ?? 'N/A'}</b> | ` +
-    `status: <b>${allApps[0]?.status ?? 'N/A'}</b> | ` +
-    `submitted_at: <b>${allApps[0]?.submitted_at ?? 'N/A'}</b>`;
+ // const dbgPanel = document.getElementById('debug-panel');
+  //const dbgText  = document.getElementById('debug-text');
+ // dbgPanel.style.display = 'block';
+ // dbgText.innerHTML =
+  //  `Rows in DB (count query): <b>${count ?? 'error: '+countErr?.message}</b><br>` +
+  //  `Rows returned by full query: <b>${allApps.length}</b><br>` +
+  //  `Query error: <b>${error?.message || 'none'}</b><br>` +
+  //  `First row tpt: <b>${allApps[0]?.tpt ?? 'N/A'}</b> | ` +
+  //  `status: <b>${allApps[0]?.status ?? 'N/A'}</b> | ` +
+//    `submitted_at: <b>${allApps[0]?.submitted_at ?? 'N/A'}</b>`;
 
   renderStats();
   renderBarChart(currentPeriod);
