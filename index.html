@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — Management Services</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --navy:       #0c1a35;
+      --navy-mid:   #16295a;
+      --navy-light: #1e3a7a;
+      --gold:       #c8a84b;
+      --gold-light: #e4cc86;
+      --gold-dim:   #8a6f2e;
+      --cream:      #f7f3eb;
+      --ink:        #1a1a1a;
+      --muted:      #7a7060;
+      --border:     #ddd8cc;
+      --white:      #ffffff;
+      --error:      #8b1a1a;
+      --error-bg:   #fef2f2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Source Sans 3', sans-serif;
+      background: var(--navy);
+      display: flex; min-height: 100vh; overflow: hidden;
+    }
+
+    .left-panel {
+      width: 30%; background: var(--navy);
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: 52px 60px; position: relative; overflow: hidden;
+    }
+
+    .left-panel::before {
+      content: ''; position: absolute; inset: 0;
+      background-image:
+        repeating-linear-gradient(45deg, transparent, transparent 60px, rgba(200,168,75,0.04) 60px, rgba(200,168,75,0.04) 61px),
+        repeating-linear-gradient(-45deg, transparent, transparent 60px, rgba(200,168,75,0.03) 60px, rgba(200,168,75,0.03) 61px);
+      pointer-events: none;
+    }
+
+    .left-panel::after {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 4px; height: 100%;
+      background: linear-gradient(180deg, var(--gold), transparent 60%);
+    }
+
+    .brand { display: flex; align-items: center; gap: 16px; position: relative; }
+    .brand-crest { display: flex; align-items: center; justify-content: center; color: var(--gold); font-size: 20px; flex-shrink: 0; }
+    .brand-text .name { font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 600; color: var(--white); letter-spacing: 0.04em; line-height: 1.2; }
+    .brand-text .sub  { font-size: 0.68rem; color: rgba(200,168,75,0.7); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 1px; }
+
+    .hero-content { position: relative; }
+
+    .hero-eyebrow {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+    }
+    .hero-eyebrow::before { content: ''; display: block; width: 28px; height: 1px; background: var(--gold); }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 3.4rem; font-weight: 700; color: var(--white);
+      line-height: 1.1; margin-bottom: 24px;
+    }
+    .hero-title em { font-style: italic; color: var(--gold-light); }
+
+    .hero-desc { font-size: 0.9rem; color: rgba(255,255,255,0.5); line-height: 1.7; max-width: 380px; }
+
+    .hero-features { margin-top: 36px; display: flex; flex-direction: column; gap: 12px; }
+    .feature-item  { display: flex; align-items: center; gap: 12px; font-size: 0.82rem; color: rgba(255,255,255,0.55); }
+    .feature-dot   { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+
+    .left-footer { font-size: 0.68rem; color: rgba(255,255,255,0.2); letter-spacing: 0.08em; position: relative; }
+
+    .right-panel {
+      flex: 1; background: var(--cream);
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px 48px; position: relative;
+    }
+    .right-panel::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 100%; height: 4px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-dim));
+    }
+
+    .login-box { width: 100%; max-width: 400px; }
+
+    .login-heading    { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .login-subheading { font-size: 0.85rem; color: var(--muted); margin-bottom: 36px; }
+
+    .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 28px; }
+
+    .tab {
+      flex: 1; text-align: center; padding: 10px 0;
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+      background: none; border-top: none; border-left: none; border-right: none;
+      font-family: 'Source Sans 3', sans-serif;
+    }
+    .tab.active { color: var(--navy); border-bottom-color: var(--navy); }
+
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    .field-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+
+    .field-group label {
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+    }
+
+    .field-group input, .field-group select {
+      width: 100%; padding: 11px 14px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 0.9rem; color: var(--ink);
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 0; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-appearance: none;
+    }
+
+    .field-group input:focus, .field-group select:focus {
+      border-color: var(--navy-mid);
+      box-shadow: 0 0 0 3px rgba(15,31,61,0.08);
+    }
+
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 44px; }
+
+    .toggle-pw {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1rem; padding: 4px; transition: color 0.15s;
+    }
+    .toggle-pw:hover { color: var(--navy); }
+
+    .forgot-link { text-align: right; margin-top: -10px; margin-bottom: 18px; }
+    .forgot-link a { font-size: 0.75rem; color: var(--gold-dim); text-decoration: none; letter-spacing: 0.04em; }
+    .forgot-link a:hover { color: var(--navy); text-decoration: underline; }
+
+    .btn-submit {
+      width: 100%; background: var(--navy); color: var(--white);
+      border: none; border-bottom: 3px solid var(--gold);
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 14px; cursor: pointer; transition: all 0.2s; margin-top: 4px;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--navy-mid); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(12,26,53,0.25); }
+    .btn-submit:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+
+    .btn-submit .spinner {
+      display: none; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.6s linear infinite; margin: 0 auto;
+    }
+    .btn-submit.loading .btn-text { display: none; }
+    .btn-submit.loading .spinner  { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert { padding: 12px 16px; margin-bottom: 20px; font-size: 0.82rem; line-height: 1.5; display: none; border-left: 3px solid; }
+    .alert.show    { display: block; }
+    .alert-error   { background: var(--error-bg); color: var(--error);  border-color: var(--error); }
+    .alert-success { background: #f0fdf4;          color: #166534;       border-color: #166534; }
+    .alert-info    { background: #eff6ff;          color: #1e40af;       border-color: #1e40af; }
+
+    .name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .login-box { animation: slideIn 0.4s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .left-content-anim { animation: fadeLeft 0.6s ease; }
+    @keyframes fadeLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+
+    @media (max-width: 860px) {
+      .left-panel { display: none; }
+      .right-panel { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="left-panel">
+  <div class="brand left-content-anim">
+    <div class="brand-crest">
+      <img src="Code-of-Arms-colour.png" style="width:100px; height:50px;" alt="coa">
+    </div>
+    <div class="brand-text">
+      <div class="name">Management Services</div>
+      <div class="sub">Ministry Of Labour and Home Affairs</div>
+    </div>
+  </div>
+
+  <div class="hero-content left-content-anim">
+    <div class="hero-eyebrow">Secure Portal</div>
+    <h1 class="hero-title">Terminal<br><em>Benefits</em><br>System</h1>
+    <p class="hero-desc">A centralised platform for processing and tracking terminal benefits for government officers across all departments.</p>
+    <div class="hero-features">
+      <div class="feature-item"><div class="feature-dot"></div>Automated delay calculations</div>
+      <div class="feature-item"><div class="feature-dot"></div>Real-time submission tracking</div>
+      <div class="feature-item"><div class="feature-dot"></div>Multi-department support</div>
+      <div class="feature-item"><div class="feature-dot"></div>Secure cloud database</div>
+    </div>
+  </div>
+
+  <div class="left-footer">© 2025 Government of Botswana · Human Resource Division</div>
+</div>
+
+<div class="right-panel">
+  <div class="login-box">
+    <div class="login-heading">Welcome back</div>
+    <div class="login-subheading">Sign in to access the terminal benefits portal.</div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="tab"        onclick="switchTab('register')">Register</button>
+    </div>
+
+    <div class="alert" id="alert"></div>
+
+    <!-- LOGIN -->
+    <div class="form-panel active" id="panel-login">
+      <div class="field-group">
+        <label for="login-email">Email Address</label>
+        <input type="email" id="login-email" placeholder="you@gov.bw" autocomplete="email">
+      </div>
+      <div class="field-group">
+        <label for="login-password">Password</label>
+        <div class="password-wrap">
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+          <button class="toggle-pw" type="button" onclick="togglePw('login-password', this)" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div class="forgot-link">
+        <a href="#" onclick="switchTab('reset'); return false;">Forgot password?</a>
+      </div>
+      <button class="btn-submit" id="btn-login" onclick="handleLogin()">
+        <span class="btn-text">Sign In</span>
+        <div class="spinner"></div>
+      </button>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="form-panel" id="panel-register">
+      <div class="name-row">
+        <div class="field-group">
+          <label for="reg-fname">First Name</label>
+          <input type="text" id="reg-fname" placeholder="John">
+        </div>
+        <div class="field-group">
+          <label for="reg-lname">Surname</label>
+          <input type="text" id="reg-lname" placeholder="Doe">
+        </div>
+      </div>
+      <div class="field-group">
+        <label for="reg-email">Email Address</label>
+        <input type="email" id="reg-email" placeholder="you@gov.bw" autocomplete="email">
+      </div>
+      <div class="field-group">
+        <label for="reg-dept">Department</label>
+        <select id="reg-dept">
+          <option value="">— Select your department —</option>
+          <option value="DIC">Dept. of Immigration and Citizenship</option>
+          <option value="CS">Dept. of Corporate Services</option>
+          <option value="CNR">Dept. of Civil and National Registration</option>
+          <option value="OSH">Dept. of Occupational Health and Safety</option>
+          <option value="LSS">Dept. of Labour and Social Security</option>
+          <option value="DES">Dept. of Employment Services</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label for="reg-password">Password</label>
+        <div class="password-wrap">
+          <input type="password" id="reg-password" placeholder="Min. 8 characters" autocomplete="new-password">
+          <button class="toggle-pw" type="button" onclick="togglePw('reg-password', this)" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label for="reg-confirm">Confirm Password</label>
+        <div class="password-wrap">
+          <input type="password" id="reg-confirm" placeholder="Repeat password" autocomplete="new-password">
+          <button class="toggle-pw" type="button" onclick="togglePw('reg-confirm', this)" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <button class="btn-submit" id="btn-register" onclick="handleRegister()">
+        <span class="btn-text">Create Account</span>
+        <div class="spinner"></div>
+      </button>
+    </div>
+
+    <!-- RESET -->
+    <div class="form-panel" id="panel-reset">
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6">
+        Enter your email and we'll send you a link to reset your password.
+      </p>
+      <div class="field-group">
+        <label for="reset-email">Email Address</label>
+        <input type="email" id="reset-email" placeholder="you@gov.bw">
+      </div>
+      <button class="btn-submit" id="btn-reset" onclick="handleReset()">
+        <span class="btn-text">Send Reset Link</span>
+        <div class="spinner"></div>
+      </button>
+      <div style="text-align:center;margin-top:16px">
+        <a href="#" onclick="switchTab('login');return false;"
+           style="font-size:0.78rem;color:var(--gold-dim);text-decoration:none;">← Back to Sign In</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL  = 'https://qrxfpmuvtsklgitiuosh.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeGZwbXV2dHNrbGdpdGl1b3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMzE5ODksImV4cCI6MjA4ODYwNzk4OX0.8AlSa32_3TqrSAqlikg6618gAxXtmC5vVLd1acrJeMo';
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  // ── Already logged in? Skip to dashboard ─────────────
+  // FIX: was redirecting to index.html which is THIS page — infinite loop!
+  db.auth.getSession().then(({ data: { session } }) => {
+    if (session) location.replace('home.html');
+  });
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['login','register','reset'][i] === tab);
+    });
+    document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+    hideAlert();
+  }
+
+  function showAlert(msg, type = 'error') {
+    const el = document.getElementById('alert');
+    el.textContent = msg;
+    el.className = `alert alert-${type} show`;
+  }
+
+  function hideAlert() { document.getElementById('alert').className = 'alert'; }
+
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    btn.classList.toggle('loading', loading);
+    btn.disabled = loading;
+  }
+
+  function togglePw(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
+  }
+
+  // ── SIGN IN ───────────────────────────────────────────
+  async function handleLogin() {
+    hideAlert();
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) { showAlert('Please enter your email and password.'); return; }
+
+    setLoading('btn-login', true);
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    setLoading('btn-login', false);
+
+    if (error) { showAlert(friendlyError(error.message)); return; }
+
+    await db.from('user_profiles')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', data.user.id);
+
+    // FIX: go to dashboard.html after login
+    location.replace('home.html');
+  }
+
+  // ── REGISTER ──────────────────────────────────────────
+  async function handleRegister() {
+    hideAlert();
+    const fname    = document.getElementById('reg-fname').value.trim();
+    const lname    = document.getElementById('reg-lname').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const dept     = document.getElementById('reg-dept').value;
+    const password = document.getElementById('reg-password').value;
+    const confirm  = document.getElementById('reg-confirm').value;
+
+    if (!fname || !lname || !email || !dept || !password) { showAlert('Please fill in all fields.'); return; }
+    if (password.length < 8)    { showAlert('Password must be at least 8 characters.'); return; }
+    if (password !== confirm)   { showAlert('Passwords do not match.'); return; }
+
+    setLoading('btn-register', true);
+
+    const { data, error } = await db.auth.signUp({
+      email, password,
+      options: { data: { full_name: `${fname} ${lname}`, department_code: dept, role: 'officer' } }
+    });
+
+    setLoading('btn-register', false);
+
+    if (error) { showAlert(friendlyError(error.message)); return; }
+
+    if (data.session) {
+      location.replace('home.html');
+    } else {
+      showAlert('✓ Account created! Check your email to confirm, then sign in.', 'success');
+      switchTab('login');
+    }
+  }
+
+  // ── PASSWORD RESET ────────────────────────────────────
+  async function handleReset() {
+    hideAlert();
+    const email = document.getElementById('reset-email').value.trim();
+    if (!email) { showAlert('Please enter your email address.'); return; }
+
+    setLoading('btn-reset', true);
+
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      // FIX: redirectTo is now index.html (the login page)
+      redirectTo: window.location.origin + '/index.html'
+    });
+
+    setLoading('btn-reset', false);
+
+    if (error) { showAlert(friendlyError(error.message)); }
+    else       { showAlert('✓ Reset link sent! Check your inbox.', 'success'); }
+  }
+
+  function friendlyError(msg) {
+    if (msg.includes('Invalid login'))       return 'Incorrect email or password. Please try again.';
+    if (msg.includes('Email not confirmed')) return 'Please confirm your email address before signing in.';
+    if (msg.includes('already registered'))  return 'This email is already registered. Try signing in instead.';
+    if (msg.includes('Password should'))     return 'Password must be at least 8 characters.';
+    if (msg.includes('rate limit'))          return 'Too many attempts. Please wait a moment and try again.';
+    return msg;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const active = document.querySelector('.form-panel.active')?.id;
+    if (active === 'panel-login')    handleLogin();
+    if (active === 'panel-register') handleRegister();
+    if (active === 'panel-reset')    handleReset();
+  });
+</script>
+</body>
+</html>
