@@ -585,7 +585,7 @@ async function signOutAndRedirect() { await db.auth.signOut(); location.replace(
     .select('full_name, role, department_code, is_active')
     .eq('id', session.user.id).single();
 
-  if (profileErr || !p || p.role !== 'admin') {
+  if (profileErr || !p || !['admin','super_admin'].includes(p.role))  {
     denyAccess(p
       ? `Signed in as <strong>${p.full_name||session.user.email}</strong> with role <strong>${p.role||'unknown'}</strong>. Admin required.`
       : 'Account profile could not be verified.');
