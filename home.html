@@ -1184,17 +1184,18 @@ function navigateToEntries(filterType) {
 }
 
 // ── Compliance logic ──────────────────────────────────────────
-// Compliant     = Paid AND tpt ≤ 90 days
-// Non-compliant = Paid AND tpt > 90 days
-// Pending       = Not yet Paid (Pending or Awaiting Approval)
-// Unknown       = Paid but tpt missing — counted as non-compliant (safe default)
+// Compliant     = Has actual_date_paid AND tpt ≤ threshold
+// Non-compliant = Has actual_date_paid AND tpt > threshold
+// Pending       = No actual_date_paid yet (regardless of status)
+// Note: Status field can still be "Awaiting Approval" while actual_date_paid is filled
+//       Admin "Mark as Paid" button is final approval that changes status to "Paid"
 function classifyApp(app) {
-  // Handle case-insensitive status check
-  const status = app.status ? app.status.toLowerCase() : '';
+  // Check if payment date exists (not status)
+  const hasPaidDate = app.actual_date_paid && app.actual_date_paid.trim() !== '';
   
-  if (status === 'paid') {
+  if (hasPaidDate) {
     const days = parseInt(app.tpt);
-    if (isNaN(days)) return 'noncompliant'; // Paid but no TPT recorded = flag
+    if (isNaN(days)) return 'noncompliant'; // Has payment date but no TPT = flag
     // BPR KPI: 35 working days ≈ 49 calendar days (Retirement/Withdrawal)
     //           85 working days ≈ 119 calendar days (Death)
     const reason = app.reasons_for_leaving?.label || app.reason_label || '';
@@ -2182,8 +2183,8 @@ function renderMonthlyTable() {
     if (!apps.length) { monthRows.push(null); return; }
 
     const total   = apps.length;
-    // Make status check case-insensitive and handle null/undefined
-    const paid    = apps.filter(a => a.status && a.status.toLowerCase() === 'paid').length;
+    // Count entries with actual payment date (regardless of status)
+    const paid    = apps.filter(a => a.actual_date_paid && a.actual_date_paid.trim() !== '').length;
     const comp    = apps.filter(a => classifyApp(a) === 'compliant').length;
     const noncomp = apps.filter(a => classifyApp(a) === 'noncompliant').length;
     const pend    = apps.filter(a => classifyApp(a) === 'pending').length;
@@ -2261,8 +2262,8 @@ function renderYearlyTable() {
   tbody.innerHTML = years.map((yr, yi) => {
     const yApps    = allApps.filter(a => a.submitted_at?.startsWith(yr));
     const total    = yApps.length;
-    // Make status check case-insensitive and handle null/undefined
-    const paid     = yApps.filter(a => a.status && a.status.toLowerCase() === 'paid').length;
+    // Count entries with actual payment date (regardless of status)
+    const paid     = yApps.filter(a => a.actual_date_paid && a.actual_date_paid.trim() !== '').length;
     const comp     = yApps.filter(a => classifyApp(a) === 'compliant').length;
     const noncomp  = yApps.filter(a => classifyApp(a) === 'noncompliant').length;
     const tptApps  = yApps.filter(a => a.tpt && !isNaN(parseInt(a.tpt)));
