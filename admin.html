@@ -1420,6 +1420,32 @@ async function saveRole(userId) {
 
   console.log('[SaveRole] Database updated successfully');
   
+  // Verify the update actually persisted by reading it back
+  const { data: verifyData, error: verifyError } = await db
+    .from('user_profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+  
+  if (verifyError) {
+    console.error('[SaveRole] Verification error:', verifyError);
+    showToast('⚠️ Update sent but could not verify. Please refresh the page.', true, 'ERR_ADMIN_003');
+    return;
+  }
+  
+  if (verifyData.role !== newRole) {
+    console.error('[SaveRole] VERIFICATION FAILED - Role reverted!');
+    console.error('[SaveRole] Expected:', newRole, 'Got:', verifyData.role);
+    showToast('⛔ Update failed - Database RLS policy may be blocking this change. Run check_and_fix_rls_policies.sql in Supabase.', true, 'ERR_ADMIN_004');
+    // Reset dropdown to actual database value
+    sel.value = verifyData.role;
+    sel.classList.remove('changed');
+    btn.classList.remove('show');
+    return;
+  }
+  
+  console.log('[SaveRole] Verification successful - role persisted as:', verifyData.role);
+  
   const u = users.find(x=>x.id===userId);
   if (u) u.role = newRole;
   sel.classList.remove('changed');
