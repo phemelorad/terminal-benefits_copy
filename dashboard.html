@@ -674,7 +674,7 @@
     const cachedDept = sessionStorage.getItem('user_dept');
     const cacheTimestamp = sessionStorage.getItem('user_cache_time');
     const cacheAge = cacheTimestamp ? Date.now() - parseInt(cacheTimestamp) : Infinity;
-    const CACHE_MAX_AGE = 30 * 1000; // 30 seconds - faster role update detection
+    const CACHE_MAX_AGE = 0; // INSTANT - Always check for role updates (no cache)
 
     // Use cache if valid (instant header display!)
     if (cachedName && cachedRole && cacheAge < CACHE_MAX_AGE) {
