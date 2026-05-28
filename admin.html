@@ -1323,7 +1323,7 @@ function userRowHtml(u, i) {
     </td>
     <td>
       <div style="display:flex;gap:6px;align-items:center">
-        <select class="role-select ${rClass}" id="rs-${u.id}" onchange="roleChanged('${u.id}')" ${isMe?'disabled title="Cannot change own role"':(u.role==='super_admin' || u.is_super_admin)?'disabled title="Super admin role is protected"':''}>
+        <select class="role-select ${rClass}" id="rs-${u.id}" onchange="roleChanged('${u.id}')" ${isMe?'disabled title="Cannot change own role"':(u.role==='super_admin' || u.is_super_admin)?'disabled title="Super admin role is protected - only the super admin can be changed by database admin"':''}>
           <option value="admin"   ${u.role==='admin'  ?'selected':''}>Admin</option>
           <option value="officer" ${u.role==='officer'?'selected':''}>Officer</option>
           <option value="viewer"  ${u.role==='viewer' ?'selected':''}>Viewer</option>
@@ -1354,10 +1354,13 @@ function userRowHtml(u, i) {
 }
 
 function roleChanged(userId) {
+  console.log('[RoleChanged] User ID:', userId);
   const sel = document.getElementById('rs-'+userId);
   const btn = document.getElementById('rsb-'+userId);
+  console.log('[RoleChanged] Dropdown found:', !!sel, 'Button found:', !!btn);
   btn.classList.add('show');
   const orig = users.find(u=>u.id===userId)?.role;
+  console.log('[RoleChanged] Original role:', orig, 'New role:', sel.value);
   sel.classList.toggle('changed', sel.value !== orig);
 }
 
@@ -1366,37 +1369,63 @@ async function saveRole(userId) {
   const btn = document.getElementById('rsb-'+userId);
   const newRole = sel.value;
   
-  // Prevent changing super_admin role
+  console.log('[SaveRole] Current user role:', currentUser?.role);
+  console.log('[SaveRole] Current user ID:', currentUser?.id);
+  console.log('[SaveRole] Target user ID:', userId);
+  console.log('[SaveRole] New role:', newRole);
+  
   const targetUser = users.find(x=>x.id===userId);
-  if (targetUser && (targetUser.role === 'super_admin' || targetUser.is_super_admin)) {
-    showToast('⛔ Cannot change super admin role', true, 'ERR_PERM_003');
+  console.log('[SaveRole] Target user current role:', targetUser?.role);
+  
+  // Prevent changing your own role
+  if (userId === currentUser.id) {
+    showToast('⛔ Cannot change your own role', true, 'ERR_PERM_003');
     btn.classList.remove('show');
+    sel.value = currentUser.role; // Reset dropdown
     return;
   }
   
-  // Prevent regular admins from assigning super_admin role
-  if (currentUser.role === 'admin' && newRole === 'super_admin') {
-    showToast('⛔ Only super admins can assign super admin role', true, 'ERR_PERM_003');
+  // Prevent changing another super_admin's role (protect the super admin)
+  if (targetUser && (targetUser.role === 'super_admin' || targetUser.is_super_admin)) {
+    showToast('⛔ Cannot change super admin role - this account is protected', true, 'ERR_PERM_003');
     btn.classList.remove('show');
+    sel.value = targetUser.role; // Reset dropdown
+    return;
+  }
+  
+  // Prevent anyone from assigning super_admin role (only you should be super_admin)
+  if (newRole === 'super_admin') {
+    showToast('⛔ Cannot assign super admin role - there can only be one super admin', true, 'ERR_PERM_003');
+    btn.classList.remove('show');
+    sel.value = targetUser.role; // Reset dropdown
     return;
   }
   
   btn.textContent = '…'; btn.disabled = true;
 
   // Update role AND timestamp to invalidate user's cache
+  console.log('[SaveRole] Updating database...');
   const { error } = await db.from('user_profiles').update({ 
     role: newRole,
     role_updated_at: new Date().toISOString()
   }).eq('id', userId);
+  
   btn.textContent = 'Save'; btn.disabled = false;
-  if (error) { showToast('✗ Failed: '+error.message, true, 'ERR_ADMIN_001'); return; }
+  
+  if (error) { 
+    console.error('[SaveRole] Database error:', error);
+    showToast('✗ Failed: '+error.message, true, 'ERR_ADMIN_001'); 
+    return; 
+  }
 
+  console.log('[SaveRole] Database updated successfully');
+  
   const u = users.find(x=>x.id===userId);
   if (u) u.role = newRole;
   sel.classList.remove('changed');
   btn.classList.remove('show');
   document.getElementById('s-admins').textContent = users.filter(u=>u.role==='admin').length;
-  showToast(`✓ Role updated to "${newRole}" — user will see changes on next page load`);
+  showToast(`✓ Role updated to "${newRole}" — user will see changes instantly on refresh`);
   renderUsers();
 }
 
