@@ -1243,10 +1243,10 @@ function rowHtml(r, i) {
   const tptRaw = r.tpt != null && r.tpt !== '' ? parseInt(r.tpt) : null;
   const d  = tptRaw ?? r.total_processing_days ?? null;
   const reasonLabel = r.reasons_for_leaving?.label || '';
-  const isDeath = reasonLabel === 'Death';
-  const warnThreshold = isDeath ? 99 : 49;   // ~85 working for Death, ~35 for others
-  const badThreshold  = isDeath ? 119 : 69;  // ~85 working for Death, ~50 for others
-  const dpClass = d==null?'':d<0?'dp-flag':d<=warnThreshold?'dp-ok':d<=badThreshold?'dp-warn':'dp-bad';
+  const isDeath = reasonLabel.toLowerCase().includes('death');
+  // CORRECTED THRESHOLDS: 25 working days for non-death, 85 for death
+  const goodThreshold = isDeath ? 85 : 25;
+  const dpClass = d==null?'':d<0?'dp-flag':d<=goodThreshold?'dp-ok':'dp-bad';
   const fmt = v => v ? new Date(v).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
   const editedHtml = r.edited_at
     ? `<div class="edited-flag" title="Last edited by ${r.edited_by||'?'} · ${fmt(r.edited_at)}">✎ Edited ${fmt(r.edited_at)}</div>`
