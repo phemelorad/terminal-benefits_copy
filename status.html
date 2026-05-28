@@ -839,8 +839,8 @@ function applyUrlFilters() {
     if (tptVal === null || !r.actual_date_paid) return 'pending';
     
     const reasonLabel = r.reasons_for_leaving?.label || '';
-    const isDeath = reasonLabel === 'Death';
-    const standard = isDeath ? 85 : 35;
+    const isDeath = reasonLabel.toLowerCase().includes('death');
+    const standard = isDeath ? 85 : 25; // CORRECTED: 25 days for non-death, 85 for death
     
     return tptVal <= standard ? 'compliant' : 'noncompliant';
   };
@@ -1472,13 +1472,13 @@ function openEdit(id) {
         <input type="date" id="ef-dogn" value="${r.date_officer_gave_notice||''}">
       </div>`;
     })()}
-    <div class="ef"><label>Date Exited Service</label>        <input type="date" id="ef-dxs"  value="${r.date_exited_service||''}"></div>
+    <div class="ef"><label>Date Exited Service</label>        <input type="date" id="ef-dxs"  value="${r.date_exited_service||''}" onchange="calculateTPT()"></div>
     <div class="ef"><label>Date Submitted to MFED</label>     <input type="date" id="ef-dstm" value="${r.date_submitted_to_mfed||''}"></div>
     <div class="ef"><label>Date Leave Days Paid</label>       <input type="date" id="ef-dldp" value="${r.date_leave_days_paid||''}"></div>
     <div class="ef"><label>Date Submitted to BPOPF</label>    <input type="date" id="ef-dstb" value="${r.date_submitted_to_bpopf||''}"></div>
-    <div class="ef"><label>Actual Date Paid</label>           <input type="date" id="ef-adp"  value="${r.actual_date_paid||''}"></div>
-    <div class="ef"><label>TPT</label>                        <input type="text" id="ef-tpt"  value="${r.tpt||''}"></div>
-    <div class="ef"><label>Public Holidays</label>            <input type="text" id="ef-hol"  value="${r.public_holidays||''}"></div>
+    <div class="ef"><label>Actual Date Paid</label>           <input type="date" id="ef-adp"  value="${r.actual_date_paid||''}" onchange="calculateTPT()"></div>
+    <div class="ef"><label>TPT (Auto-calculated)</label>      <input type="text" id="ef-tpt"  value="${r.tpt||''}" readonly style="background:#f0f0f0;cursor:not-allowed" title="Automatically calculated from dates"></div>
+    <div class="ef"><label>Public Holidays</label>            <input type="text" id="ef-hol"  value="${r.public_holidays||''}" readonly style="background:#f0f0f0;cursor:not-allowed" title="Calculated field - not editable"></div>
     <div class="ef full"><label>Comments</label>              <textarea id="ef-cmt">${r.comments||''}</textarea></div>
   `;
   
@@ -1489,6 +1489,19 @@ function openEdit(id) {
   });
   
   openModal('ov-edit');
+}
+
+// ── AUTO-CALCULATE TPT ────────────────────────────────────────
+function calculateTPT() {
+  const dxs = document.getElementById('ef-dxs')?.value;
+  const adp = document.getElementById('ef-adp')?.value;
+  const tptField = document.getElementById('ef-tpt');
+  
+  if (dxs && adp && tptField) {
+    const tptDays = Math.round((new Date(adp) - new Date(dxs)) / 86400000);
+    tptField.value = tptDays;
+    console.log('[Auto-calc] TPT:', tptDays, 'days');
+  }
 }
 
 async function saveEdit() {

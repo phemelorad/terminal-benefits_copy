@@ -655,9 +655,19 @@ document.getElementById('footer-yr').textContent = new Date().getFullYear();
     document.getElementById('admin-banner').classList.add('show');
   }
 
-  await loadProfile(profileId, session.user.email);
-  await loadStats(profileId);
-  await loadRecentActivity(profileId);
+  // ═══════════════════════════════════════════════════════
+  // PERFORMANCE OPTIMIZATION: Load all data in parallel
+  // ═══════════════════════════════════════════════════════
+  const startTime = performance.now();
+  
+  await Promise.all([
+    loadProfile(profileId, session.user.email),
+    loadStats(profileId),
+    loadRecentActivity(profileId)
+  ]);
+  
+  const loadTime = performance.now() - startTime;
+  console.log(`✅ Profile loaded in ${loadTime.toFixed(0)}ms`);
 })();
 
 // ── LOAD PROFILE ─────────────────────────────────────────────────

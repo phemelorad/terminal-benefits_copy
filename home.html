@@ -1077,10 +1077,35 @@ updateClock();
     const cacheAge = cacheTimestamp ? Date.now() - parseInt(cacheTimestamp) : Infinity;
     const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
 
+    let useCache = false;
+
     // Use cache if valid (instant header display!)
     if (cachedName && cachedRole && cacheAge < CACHE_MAX_AGE) {
-      console.log('⚡ Using cached user profile (instant load)');
-      
+      // Quick check: verify role hasn't been updated by admin
+      const { data: roleCheck } = await db.from('user_profiles')
+        .select('role, role_updated_at')
+        .eq('id', session.user.id)
+        .single();
+
+      const roleUpdatedAt = roleCheck?.role_updated_at ? new Date(roleCheck.role_updated_at).getTime() : 0;
+      const cacheCreatedAt = cacheTimestamp ? parseInt(cacheTimestamp) : 0;
+
+      // If role was updated after cache was created, invalidate cache
+      if (roleUpdatedAt > cacheCreatedAt) {
+        console.log('⚠️ Role was updated by admin - clearing cache');
+        sessionStorage.clear();
+        useCache = false;
+      } else if (roleCheck && roleCheck.role === cachedRole) {
+        console.log('⚡ Using cached user profile (instant load)');
+        useCache = true;
+      } else {
+        console.log('⚠️ Role mismatch - clearing cache');
+        sessionStorage.clear();
+        useCache = false;
+      }
+    }
+
+    if (useCache) {
       // Display cached data immediately
       document.getElementById('user-email').textContent = cachedName;
       const rEl = document.getElementById('user-role');
@@ -1095,16 +1120,13 @@ updateClock();
 
       // Load dashboard immediately with cached profile
       await loadDashboard();
-      
-      // Refresh profile in background (non-blocking)
-      refreshUserProfile(session.user.id);
       return;
     }
 
     // No cache or expired - fetch from database
     console.log('🔄 Fetching user profile from database');
     const { data: p, error: pErr } = await db.from('user_profiles')
-      .select('full_name,role,department_code,is_active').eq('id', session.user.id).single();
+      .select('full_name,role,department_code,is_active,role_updated_at').eq('id', session.user.id).single();
 
     if (pErr) console.warn('[Home] Profile error:', pErr.message);
 
@@ -1264,11 +1286,12 @@ function classifyApp(app) {
   if (hasPaidDate) {
     const days = parseInt(app.tpt);
     if (isNaN(days)) return 'noncompliant'; // Has payment date but no TPT = flag
-    // BPR KPI: 35 working days ≈ 49 calendar days (Retirement/Withdrawal)
-    //           85 working days ≈ 119 calendar days (Death)
+    // CORRECTED COMPLIANCE STANDARDS (working days):
+    //   25 working days for Retirement/Withdrawal/Dismissal
+    //   85 working days for Death
     const reason = app.reasons_for_leaving?.label || app.reason_label || '';
-    const isDeath = reason === 'Death';
-    const threshold = isDeath ? 119 : 49;
+    const isDeath = reason.toLowerCase().includes('death');
+    const threshold = isDeath ? 85 : 25;
     return days <= threshold ? 'compliant' : 'noncompliant';
   }
   return 'pending';

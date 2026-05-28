@@ -1383,7 +1383,11 @@ async function saveRole(userId) {
   
   btn.textContent = '…'; btn.disabled = true;
 
-  const { error } = await db.from('user_profiles').update({ role: newRole }).eq('id', userId);
+  // Update role AND timestamp to invalidate user's cache
+  const { error } = await db.from('user_profiles').update({ 
+    role: newRole,
+    role_updated_at: new Date().toISOString()
+  }).eq('id', userId);
   btn.textContent = 'Save'; btn.disabled = false;
   if (error) { showToast('✗ Failed: '+error.message, true, 'ERR_ADMIN_001'); return; }
 
@@ -1392,7 +1396,7 @@ async function saveRole(userId) {
   sel.classList.remove('changed');
   btn.classList.remove('show');
   document.getElementById('s-admins').textContent = users.filter(u=>u.role==='admin').length;
-  showToast(`✓ Role updated to "${newRole}"`);
+  showToast(`✓ Role updated to "${newRole}" — user will see changes on next page load`);
   renderUsers();
 }
 
