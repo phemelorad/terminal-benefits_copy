@@ -1041,7 +1041,7 @@ async function confirmAction() {
 
   btn.disabled = false; btn.textContent = 'Confirm';
 
-  if (error) { showToast('✗ Failed: '+error.message, true); return; }
+  if (error) { showToast('✗ Failed: '+error.message, true, 'ERR_ADMIN_003'); return; }
 
   showToast(`✓ Application #${appId} marked as ${newStatus}`);
   closeModal('ov-confirm');
@@ -1369,14 +1369,14 @@ async function saveRole(userId) {
   // Prevent changing super_admin role
   const targetUser = users.find(x=>x.id===userId);
   if (targetUser && (targetUser.role === 'super_admin' || targetUser.is_super_admin)) {
-    showToast('⛔ Cannot change super admin role', true);
+    showToast('⛔ Cannot change super admin role', true, 'ERR_PERM_003');
     btn.classList.remove('show');
     return;
   }
   
   // Prevent regular admins from assigning super_admin role
   if (currentUser.role === 'admin' && newRole === 'super_admin') {
-    showToast('⛔ Only super admins can assign super admin role', true);
+    showToast('⛔ Only super admins can assign super admin role', true, 'ERR_PERM_003');
     btn.classList.remove('show');
     return;
   }
@@ -1385,7 +1385,7 @@ async function saveRole(userId) {
 
   const { error } = await db.from('user_profiles').update({ role: newRole }).eq('id', userId);
   btn.textContent = 'Save'; btn.disabled = false;
-  if (error) { showToast('✗ Failed: '+error.message, true); return; }
+  if (error) { showToast('✗ Failed: '+error.message, true, 'ERR_ADMIN_001'); return; }
 
   const u = users.find(x=>x.id===userId);
   if (u) u.role = newRole;
@@ -1399,13 +1399,13 @@ async function saveRole(userId) {
 async function deleteUser(userId, userName) {
   // Double-check server side — super admin can't be deleted
   const { data: chk } = await db.from('user_profiles').select('is_super_admin').eq('id', userId).single();
-  if (chk?.is_super_admin) { showToast('⛔ Super admin account cannot be deleted', true); return; }
+  if (chk?.is_super_admin) { showToast('⛔ Super admin account cannot be deleted', true, 'ERR_ADMIN_002'); return; }
   if (!confirm(`Permanently delete ${userName}?\n\nThis removes their account and cannot be undone. Their submitted applications will remain in the system.`)) return;
   if (!confirm(`Are you absolutely sure? This action is IRREVERSIBLE.`)) return;
 
   // Delete from user_profiles first (auth deletion requires service key — flag for admin)
   const { error } = await db.from('user_profiles').delete().eq('id', userId);
-  if (error) { showToast('Delete failed: ' + error.message, true); return; }
+  if (error) { showToast('Delete failed: ' + error.message, true, 'ERR_ADMIN_002'); return; }
 
   showToast(`✓ ${userName} removed from system`);
   await loadUsers();
@@ -1420,7 +1420,7 @@ async function toggleActive(userId, makeActive) {
     if (!confirm(`Deactivate ${nm}?\n\nThey will be immediately signed out and unable to log in until reactivated.`)) return;
   }
   const { error } = await db.from('user_profiles').update({ is_active: makeActive }).eq('id', userId);
-  if (error) { showToast('✗ Failed: '+error.message, true); return; }
+  if (error) { showToast('✗ Failed: '+error.message, true, 'ERR_ADMIN_001'); return; }
   const u = users.find(x=>x.id===userId);
   if (u) u.is_active = makeActive;
   showToast(`✓ User ${makeActive?'activated':'deactivated'}`);
@@ -1432,13 +1432,48 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); doc
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
 function ovClose(e,id)  { if(e.target===document.getElementById(id)) closeModal(id); }
 
-function showToast(msg, isErr=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.background = isErr ? '#8b1a1a' : '#2d6a4f';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 4000);
+// ══════════════════════════════════════════════════════════════
+// ERROR HANDLING SYSTEM
+// ══════════════════════════════════════════════════════════════
+const ERROR_CODES = {
+  ERR_ADMIN_001: { code: 'ERR_ADMIN_001', title: 'Role Update Failed', message: 'Unable to update user role', action: 'Check your permissions and try again', contact: true },
+  ERR_ADMIN_002: { code: 'ERR_ADMIN_002', title: 'User Deletion Failed', message: 'Unable to delete user account', action: 'Super admin accounts cannot be deleted. Contact IT support.', contact: true },
+  ERR_ADMIN_003: { code: 'ERR_ADMIN_003', title: 'Status Update Failed', message: 'Unable to mark application as paid', action: 'Check your connection and try again', contact: true },
+  ERR_PERM_003: { code: 'ERR_PERM_003', title: 'Super Admin Protected', message: 'Super admin accounts cannot be modified', action: 'This is a security restriction to protect system administrators', contact: false },
+  ERR_EXPORT_001: { code: 'ERR_EXPORT_001', title: 'Export Failed', message: 'Unable to export data', action: 'Try exporting fewer records or refresh the page', contact: true }
+};
+
+function getErrorDetails(code) {
+  return ERROR_CODES[code] || { code: 'ERR_UNKNOWN', title: 'Unknown Error', message: 'An unexpected error occurred', action: 'Please try again or contact IT support', contact: true };
 }
+
+function showToast(msg, isErr=false, errorCode=null) {
+  const t = document.getElementById('toast');
+  
+  if (errorCode) {
+    const errorDetails = getErrorDetails(errorCode);
+    t.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span style="font-weight:700">${errorDetails.title}</span>
+          <span style="font-size:0.7rem;opacity:0.7;white-space:nowrap">${errorDetails.code}</span>
+        </div>
+        <div style="line-height:1.4">${errorDetails.message}</div>
+        <div style="font-size:0.85rem;opacity:0.9;line-height:1.4">💡 ${errorDetails.action}</div>
+        ${errorDetails.contact ? `<div style="font-size:0.85rem;opacity:0.8;margin-top:4px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.2)">📞 Need help? Contact IT support or your system administrator</div>` : ''}
+      </div>
+    `;
+    console.error(`[${errorDetails.code}]`, msg);
+    t.style.background = '#991b1b';
+  } else {
+    t.textContent = msg;
+    t.style.background = isErr ? '#8b1a1a' : '#2d6a4f';
+  }
+  
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), errorCode ? 6000 : 4000);
+}
+
 
 // ══ AUTO LOGOUT ════════════════════════════════════════════════
 const IDLE_TIMEOUT_MS = 15*60*1000, WARN_DURATION_MS = 60*1000;

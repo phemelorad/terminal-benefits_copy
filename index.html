@@ -396,11 +396,52 @@
     hideAlert();
   }
 
-  function showAlert(msg, type = 'error') {
+  // ══════════════════════════════════════════════════════════════
+  // ERROR HANDLING SYSTEM
+  // ══════════════════════════════════════════════════════════════
+  const ERROR_CODES = {
+    ERR_AUTH_001: { code: 'ERR_AUTH_001', title: 'Login Failed', message: 'Invalid email or password', action: 'Check your credentials and try again. Make sure Caps Lock is off.', contact: true },
+    ERR_AUTH_002: { code: 'ERR_AUTH_002', title: 'Account Inactive', message: 'Your account is pending activation', action: 'Contact your administrator to activate your account', contact: true },
+    ERR_AUTH_003: { code: 'ERR_AUTH_003', title: 'Password Reset Failed', message: 'Unable to send password reset email', action: 'SMTP server not configured. Contact IT support for manual password reset.', contact: true },
+    ERR_AUTH_004: { code: 'ERR_AUTH_004', title: 'Registration Failed', message: 'Unable to create account', action: 'Check all fields are filled correctly and try again', contact: true },
+    ERR_VALID_001: { code: 'ERR_VALID_001', title: 'Validation Failed', message: 'Please check the form for errors', action: 'Fill in all required fields correctly', contact: false },
+    ERR_VALID_002: { code: 'ERR_VALID_002', title: 'Password Requirements', message: 'Password does not meet requirements', action: 'Password must be at least 8 characters long', contact: false },
+    ERR_VALID_003: { code: 'ERR_VALID_003', title: 'Password Mismatch', message: 'Passwords do not match', action: 'Make sure both password fields are identical', contact: false }
+  };
+
+  function getErrorDetails(code) {
+    return ERROR_CODES[code] || { code: 'ERR_UNKNOWN', title: 'Unknown Error', message: 'An unexpected error occurred', action: 'Please try again or contact IT support', contact: true };
+  }
+
+  function showAlert(msg, type = 'error', errorCode = null) {
     const el = document.getElementById('alert');
     if (!el) return;
-    el.textContent = msg;
-    el.className = `alert alert-${type} show`;
+    
+    el.className = `alert alert-${type}`;
+    
+    if (errorCode) {
+      const errorDetails = getErrorDetails(errorCode);
+      el.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <strong>${errorDetails.title}</strong>
+            <span style="font-size:0.75rem;opacity:0.7">${errorDetails.code}</span>
+          </div>
+          <div>${errorDetails.message}</div>
+          <div style="font-size:0.9rem;opacity:0.9">💡 ${errorDetails.action}</div>
+          ${errorDetails.contact ? `
+            <div style="font-size:0.9rem;opacity:0.8;margin-top:4px;padding-top:8px;border-top:1px solid currentColor;border-opacity:0.2">
+              📞 Need help? Contact IT support or your system administrator
+            </div>
+          ` : ''}
+        </div>
+      `;
+      console.error(`[${errorDetails.code}]`, msg);
+    } else {
+      el.textContent = msg;
+    }
+    
+    el.classList.add('show');
   }
 
   function hideAlert() {
@@ -484,14 +525,14 @@
     hideAlert();
     const email    = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
-    if (!email || !password) { showAlert('Please enter your email and password.'); return; }
+    if (!email || !password) { showAlert('Please enter your email and password.', 'error', 'ERR_VALID_001'); return; }
 
     setLoading('btn-login', true);
     const { data, error } = await db.auth.signInWithPassword({ email, password });
     setLoading('btn-login', false);
 
     if (error) {
-      showAlert(friendlyError(error.message));
+      showAlert(friendlyError(error.message), 'error', 'ERR_AUTH_001');
       if (error.message.includes('rate limit') || error.message.includes('too many') || error.message.includes('Too many'))
         startCooldown('btn-login', 60);
       return;
@@ -502,7 +543,7 @@
       .select('is_active').eq('id', data.user.id).single();
     if (profile && profile.is_active === false) {
       await db.auth.signOut();
-      showAlert('⛔ Your account is pending activation. Please contact your administrator.');
+      showAlert('⛔ Your account is pending activation. Please contact your administrator.', 'error', 'ERR_AUTH_002');
       return;
     }
 
@@ -528,9 +569,9 @@
     const password = document.getElementById('reg-password').value;
     const confirm  = document.getElementById('reg-confirm').value;
 
-    if (!fname || !lname || !email || !dept || !location || !password) { showAlert('Please fill in all fields.'); return; }
-    if (password.length < 8)  { showAlert('Password must be at least 8 characters.'); return; }
-    if (password !== confirm) { showAlert('Passwords do not match.'); return; }
+    if (!fname || !lname || !email || !dept || !location || !password) { showAlert('Please fill in all fields.', 'error', 'ERR_VALID_001'); return; }
+    if (password.length < 8)  { showAlert('Password must be at least 8 characters.', 'error', 'ERR_VALID_002'); return; }
+    if (password !== confirm) { showAlert('Passwords do not match.', 'error', 'ERR_VALID_003'); return; }
 
     setLoading('btn-register', true);
     try {
@@ -543,7 +584,7 @@
     setLoading('btn-register', false);
 
     if (error) {
-      showAlert(friendlyError(error.message));
+      showAlert(friendlyError(error.message), 'error', 'ERR_AUTH_004');
       if (error.message.includes('rate limit') || error.message.includes('too many') || error.message.includes('Too many'))
         startCooldown('btn-register', 60);
       return;
@@ -563,15 +604,15 @@
     hideAlert();
     const pw  = document.getElementById('newpw-password').value;
     const cfm = document.getElementById('newpw-confirm').value;
-    if (pw.length < 8) { showAlert('Password must be at least 8 characters.'); return; }
-    if (pw !== cfm)    { showAlert('Passwords do not match.'); return; }
+    if (pw.length < 8) { showAlert('Password must be at least 8 characters.', 'error', 'ERR_VALID_002'); return; }
+    if (pw !== cfm)    { showAlert('Passwords do not match.', 'error', 'ERR_VALID_003'); return; }
 
     setLoading('btn-newpw', true);
     const { error } = await db.auth.updateUser({ password: pw });
     setLoading('btn-newpw', false);
 
     if (error) {
-      showAlert('Failed to update password: ' + error.message);
+      showAlert('Failed to update password: ' + error.message, 'error', 'ERR_AUTH_004');
     } else {
       showAlert('✓ Password updated! Signing you in…', 'success');
       setTimeout(() => location.replace('home.html'), 1500);
@@ -582,7 +623,7 @@
   async function handleReset() {
     hideAlert();
     const email = document.getElementById('reset-email').value.trim();
-    if (!email) { showAlert('Please enter your email address.'); return; }
+    if (!email) { showAlert('Please enter your email address.', 'error', 'ERR_VALID_001'); return; }
 
     setLoading('btn-reset', true);
     const { error } = await db.auth.resetPasswordForEmail(email, {
@@ -595,7 +636,7 @@
       const msg = error.status === 500
         ? '⚠ Email sending failed — the SMTP server is not configured correctly. Please contact your administrator to reset your password manually via the Supabase dashboard.'
         : friendlyError(error.message);
-      showAlert(msg);
+      showAlert(msg, 'error', 'ERR_AUTH_003');
       if (error.message?.includes('rate limit') || error.message?.includes('too many'))
         startCooldown('btn-reset', 60);
     } else {
@@ -624,7 +665,7 @@
 
     // Show inactive account message
     if (new URLSearchParams(window.location.search).get('inactive') === '1') {
-      showAlert('⛔ Your account is pending activation. Please contact your administrator.', 'error');
+      showAlert('⛔ Your account is pending activation. Please contact your administrator.', 'error', 'ERR_AUTH_002');
       history.replaceState(null, '', window.location.pathname);
     }
 
