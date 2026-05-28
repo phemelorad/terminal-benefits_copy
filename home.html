@@ -1075,33 +1075,39 @@ updateClock();
     const cachedDept = sessionStorage.getItem('user_dept');
     const cacheTimestamp = sessionStorage.getItem('user_cache_time');
     const cacheAge = cacheTimestamp ? Date.now() - parseInt(cacheTimestamp) : Infinity;
-    const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+    const CACHE_MAX_AGE = 30 * 1000; // 30 seconds - faster role update detection
 
     let useCache = false;
 
     // Use cache if valid (instant header display!)
     if (cachedName && cachedRole && cacheAge < CACHE_MAX_AGE) {
       // Quick check: verify role hasn't been updated by admin
-      const { data: roleCheck } = await db.from('user_profiles')
+      const { data: roleCheck, error: roleCheckErr } = await db.from('user_profiles')
         .select('role, role_updated_at')
         .eq('id', session.user.id)
         .single();
 
-      const roleUpdatedAt = roleCheck?.role_updated_at ? new Date(roleCheck.role_updated_at).getTime() : 0;
-      const cacheCreatedAt = cacheTimestamp ? parseInt(cacheTimestamp) : 0;
+      // If role_updated_at column doesn't exist yet, skip the check
+      if (roleCheckErr && roleCheckErr.message?.includes('role_updated_at')) {
+        console.warn('⚠️ role_updated_at column not found - run fix_role_update_tracking.sql');
+        useCache = true; // Use cache anyway
+      } else if (roleCheck) {
+        const roleUpdatedAt = roleCheck.role_updated_at ? new Date(roleCheck.role_updated_at).getTime() : 0;
+        const cacheCreatedAt = cacheTimestamp ? parseInt(cacheTimestamp) : 0;
 
-      // If role was updated after cache was created, invalidate cache
-      if (roleUpdatedAt > cacheCreatedAt) {
-        console.log('⚠️ Role was updated by admin - clearing cache');
-        sessionStorage.clear();
-        useCache = false;
-      } else if (roleCheck && roleCheck.role === cachedRole) {
-        console.log('⚡ Using cached user profile (instant load)');
-        useCache = true;
-      } else {
-        console.log('⚠️ Role mismatch - clearing cache');
-        sessionStorage.clear();
-        useCache = false;
+        // If role was updated after cache was created, invalidate cache
+        if (roleUpdatedAt > cacheCreatedAt) {
+          console.log('⚠️ Role was updated by admin - clearing cache');
+          sessionStorage.clear();
+          useCache = false;
+        } else if (roleCheck.role === cachedRole) {
+          console.log('⚡ Using cached user profile (instant load)');
+          useCache = true;
+        } else {
+          console.log('⚠️ Role mismatch - clearing cache');
+          sessionStorage.clear();
+          useCache = false;
+        }
       }
     }
 
@@ -1126,7 +1132,7 @@ updateClock();
     // No cache or expired - fetch from database
     console.log('🔄 Fetching user profile from database');
     const { data: p, error: pErr } = await db.from('user_profiles')
-      .select('full_name,role,department_code,is_active,role_updated_at').eq('id', session.user.id).single();
+      .select('full_name,role,department_code,is_active').eq('id', session.user.id).single();
 
     if (pErr) console.warn('[Home] Profile error:', pErr.message);
 

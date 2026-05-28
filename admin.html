@@ -658,7 +658,7 @@ async function signOutAndRedirect() { await db.auth.signOut(); sessionStorage.cl
   const cachedDept = sessionStorage.getItem('user_dept');
   const cacheTimestamp = sessionStorage.getItem('user_cache_time');
   const cacheAge = cacheTimestamp ? Date.now() - parseInt(cacheTimestamp) : Infinity;
-  const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+  const CACHE_MAX_AGE = 30 * 1000; // 30 seconds - faster role update detection
 
   // Use cache if valid and user is admin (instant header display!)
   if (cachedName && cachedRole && cacheAge < CACHE_MAX_AGE && ['admin','super_admin'].includes(cachedRole)) {
