@@ -8,6 +8,8 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230f1f3d'/><text y='75' x='50' text-anchor='middle' font-size='60' fill='%23c8a84b'>⚖</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Entries — Terminal Benefits</title>
+  <!-- Auth Guard: Hide page until authentication verified -->
+  <script>document.documentElement.style.opacity='0';</script>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preload" href="Code-of-Arms-colour.png" as="image">
   <link rel="prefetch" href="home.html">
@@ -599,6 +601,10 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON, {
   const session = refreshData?.session
     || (await db.auth.getSession()).data.session;
   if (!session) { location.replace('index.html'); return; }
+  
+  // Show page now that auth is verified
+  document.documentElement.style.opacity = '1';
+  document.documentElement.style.transition = 'opacity 0.2s';
 
   // ═══════════════════════════════════════════════════════
   // OPTIMIZATION: Check cache first for instant header load
