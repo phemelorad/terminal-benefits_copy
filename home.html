@@ -727,18 +727,25 @@
   <!-- Tracking Indicators Section -->
   <div class="section-header" style="margin-top:32px">
     <div class="section-title">Tracking Indicators</div>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div class="period-tabs">
         <button class="period-tab active" id="tracking-monthly-btn" onclick="setTrackingPeriod('monthly',this)">Monthly</button>
         <button class="period-tab" id="tracking-quarterly-btn" onclick="setTrackingPeriod('quarterly',this)">Quarterly</button>
         <button class="period-tab" id="tracking-yearly-btn" onclick="setTrackingPeriod('yearly',this)">Yearly</button>
       </div>
+      <!-- Year selector (shows for monthly view) -->
+      <select id="tracking-year-filter" class="tracking-select" style="min-width:120px;display:inline-block" onchange="updateMonthsForYear()">
+        <!-- Populated dynamically -->
+      </select>
+      <!-- Month selector (filtered by year) -->
       <select id="tracking-month-select" class="tracking-select" style="min-width:180px;display:inline-block" onchange="loadTrackingIndicators()">
         <!-- Populated dynamically -->
       </select>
+      <!-- Quarter selector -->
       <select id="tracking-quarter-select" class="tracking-select" style="min-width:200px;display:none" onchange="loadTrackingIndicators()">
         <!-- Populated dynamically -->
       </select>
+      <!-- Year selector (for yearly view) -->
       <select id="tracking-year-select" class="tracking-select" style="min-width:140px;display:none" onchange="loadTrackingIndicators()">
         <!-- Populated dynamically -->
       </select>
@@ -919,56 +926,53 @@
   </div>
 
 
-  <!-- ── LOCATION ANALYTICS ──────────────────────────────────── -->
+  <!-- ── DEPARTMENT ANALYTICS ──────────────────────────────────── -->
   <div class="section-header fade-in" style="margin-top:32px;margin-bottom:20px">
-    <h2 class="section-title">Location Analytics</h2>
-    <p class="section-sub">Processing time and compliance broken down by station</p>
+    <h2 class="section-title">Department Analytics</h2>
+    <p class="section-sub">Retirement trends and reasons broken down by department</p>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px">
     <div class="chart-card fade-in">
       <div class="chart-header">
-        <div class="chart-title">Compliance by Location</div>
-        <div class="chart-sub">% meeting BPR 35 working day target</div>
+        <div class="chart-title">Retirements by Department</div>
+        <div class="chart-sub">Total applications per department</div>
       </div>
       <div style="position:relative;height:240px">
-        <canvas id="locationCompChart"></canvas>
+        <canvas id="deptCountChart"></canvas>
       </div>
     </div>
     <div class="chart-card fade-in">
       <div class="chart-header">
-        <div class="chart-title">Avg. Processing Time by Location</div>
-        <div class="chart-sub">Calendar days from notice to payment</div>
+        <div class="chart-title">Top Reasons by Department</div>
+        <div class="chart-sub">Most common reason for leaving per department</div>
       </div>
       <div style="position:relative;height:240px">
-        <canvas id="locationTptChart"></canvas>
+        <canvas id="deptReasonChart"></canvas>
       </div>
     </div>
   </div>
 
   <div class="chart-card fade-in" style="margin-bottom:28px">
     <div class="chart-header">
-      <div class="chart-title">Station Summary</div>
-      <div class="chart-sub">Applications, compliance and average TPT per location</div>
+      <div class="chart-title">Department Summary</div>
+      <div class="chart-sub">Applications and top reasons for leaving by department</div>
     </div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:.82rem">
         <thead>
           <tr style="background:var(--navy);color:#fff">
-            <th style="padding:10px 16px;text-align:left;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Location</th>
-            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Total</th>
-            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Paid</th>
-            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Compliant</th>
-            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Compliance %</th>
-            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Avg TPT (days)</th>
-            <th style="padding:10px 16px;text-align:left;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Performance</th>
+            <th style="padding:10px 16px;text-align:left;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Department</th>
+            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Total Apps</th>
+            <th style="padding:10px 16px;text-align:left;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Top Reason</th>
+            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Count</th>
+            <th style="padding:10px 16px;text-align:center;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600">% of Dept</th>
           </tr>
         </thead>
-        <tbody id="location-tbody"></tbody>
+        <tbody id="department-tbody"></tbody>
       </table>
     </div>
   </div>
-
 </div><!-- /page-wrapper -->
 
 <!-- Toast Notification -->
@@ -1463,12 +1467,31 @@ function setTrackingPeriod(period, btn) {
   document.querySelectorAll('#tracking-monthly-btn, #tracking-quarterly-btn, #tracking-yearly-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   
-  // Show/hide appropriate dropdown
-  document.getElementById('tracking-month-select').style.display = period === 'monthly' ? 'inline-block' : 'none';
-  document.getElementById('tracking-quarter-select').style.display = period === 'quarterly' ? 'inline-block' : 'none';
-  document.getElementById('tracking-year-select').style.display = period === 'yearly' ? 'inline-block' : 'none';
+  // Show/hide appropriate dropdowns
+  const yearFilter = document.getElementById('tracking-year-filter');
+  const monthSelect = document.getElementById('tracking-month-select');
+  const quarterSelect = document.getElementById('tracking-quarter-select');
+  const yearSelect = document.getElementById('tracking-year-select');
+  
+  if (period === 'monthly') {
+    yearFilter.style.display = 'inline-block';
+    monthSelect.style.display = 'inline-block';
+    quarterSelect.style.display = 'none';
+    yearSelect.style.display = 'none';
+  } else if (period === 'quarterly') {
+    yearFilter.style.display = 'none';
+    monthSelect.style.display = 'none';
+    quarterSelect.style.display = 'inline-block';
+    yearSelect.style.display = 'none';
+  } else { // yearly
+    yearFilter.style.display = 'none';
+    monthSelect.style.display = 'none';
+    quarterSelect.style.display = 'none';
+    yearSelect.style.display = 'inline-block';
+  }
   
   loadTrackingIndicators();
+}
 }
 
 // Botswana Government Fiscal Year: April - March
@@ -1508,6 +1531,7 @@ function populateTrackingDropdowns() {
   const months = new Set();
   const years = new Set();
   const quarters = new Set();
+  const monthsByYear = {}; // Group months by year
   
   allApps.forEach(app => {
     if (app.submitted_at) {
@@ -1518,6 +1542,12 @@ function populateTrackingDropdowns() {
       
       months.add(monthKey);
       years.add(year);
+      
+      // Group months by year
+      if (!monthsByYear[year]) monthsByYear[year] = [];
+      if (!monthsByYear[year].includes(monthKey)) {
+        monthsByYear[year].push(monthKey);
+      }
       
       // Add quarter
       const qInfo = getQuarterInfo(month, year);
@@ -1538,17 +1568,18 @@ function populateTrackingDropdowns() {
   const currentQInfo = getQuarterInfo(now.getMonth() + 1, now.getFullYear());
   const currentQuarter = `${currentQInfo.fiscalYear}-Q${currentQInfo.quarter}`;
   
-  // Populate month dropdown
-  const monthSelect = document.getElementById('tracking-month-select');
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-  
-  monthSelect.innerHTML = sortedMonths.map(monthKey => {
-    const [year, month] = monthKey.split('-');
-    const monthName = monthNames[parseInt(month) - 1];
-    const selected = monthKey === currentMonth ? 'selected' : '';
-    return `<option value="${monthKey}" ${selected}>${monthName} ${year}</option>`;
+  // Populate year filter dropdown (for monthly view)
+  const yearFilter = document.getElementById('tracking-year-filter');
+  yearFilter.innerHTML = sortedYears.map(year => {
+    const selected = year === currentYear ? 'selected' : '';
+    return `<option value="${year}" ${selected}>${year}</option>`;
   }).join('');
+  
+  // Store monthsByYear globally for filtering
+  window.trackingMonthsByYear = monthsByYear;
+  
+  // Populate month dropdown (initially for current year)
+  updateMonthsForYear();
   
   // Populate quarter dropdown
   const quarterSelect = document.getElementById('tracking-quarter-select');
@@ -1566,12 +1597,47 @@ function populateTrackingDropdowns() {
     return `<option value="${quarterKey}" ${selected}>${label}</option>`;
   }).join('');
   
-  // Populate year dropdown
+  // Populate year dropdown (for yearly view)
   const yearSelect = document.getElementById('tracking-year-select');
   yearSelect.innerHTML = sortedYears.map(year => {
     const selected = year === currentYear ? 'selected' : '';
     return `<option value="${year}" ${selected}>${year}</option>`;
   }).join('');
+}
+
+// Update month dropdown based on selected year
+function updateMonthsForYear() {
+  const yearFilter = document.getElementById('tracking-year-filter');
+  const monthSelect = document.getElementById('tracking-month-select');
+  const selectedYear = parseInt(yearFilter.value);
+  
+  const monthsByYear = window.trackingMonthsByYear || {};
+  const monthsForYear = monthsByYear[selectedYear] || [];
+  
+  // Sort months descending (most recent first)
+  const sortedMonths = monthsForYear.sort().reverse();
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  // Get current month for default selection
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  
+  monthSelect.innerHTML = sortedMonths.map(monthKey => {
+    const [year, month] = monthKey.split('-');
+    const monthName = monthNames[parseInt(month) - 1];
+    const selected = monthKey === currentMonth ? 'selected' : '';
+    return `<option value="${monthKey}" ${selected}>${monthName}</option>`;
+  }).join('');
+  
+  // If no months for this year, show placeholder
+  if (!sortedMonths.length) {
+    monthSelect.innerHTML = '<option value="">No data for this year</option>';
+  }
+  
+  // Reload indicators with new month selection
+  loadTrackingIndicators();
 }
 
 async function loadTrackingIndicators() {
@@ -1885,7 +1951,7 @@ function renderAllCharts() {
   renderDeptCompliance();
   renderRecentTable();
   renderReasonChart();
-  renderLocationCharts();
+  renderDepartmentCharts();
   renderComplianceTable();
   loadComplianceMetrics();
   populateTrackingDropdowns();
@@ -2422,163 +2488,185 @@ function renderYearlyTable() {
   }).join('');
 }
 
-// ── Location Charts ─────────────────────────────────────────────
-let locationCompInst = null, locationTptInst = null;
+// ── Department Charts ─────────────────────────────────────────────
+let deptCountInst = null, deptReasonInst = null;
 
-function renderLocationCharts() {
+function renderDepartmentCharts() {
   // Use current month data only
   const monthApps = getCurrentMonthApps();
-  // Build per-location stats
-  const locs = {};
+  
+  // Build per-department stats
+  const depts = {};
   monthApps.forEach(a => {
-    const loc = a.submitted_location || 'Unknown';
-    if (!locs[loc]) locs[loc] = { total:0, paid:0, compliant:0, tptSum:0, tptCount:0 };
-    locs[loc].total++;
-    if (a.status === 'Paid') locs[loc].paid++;
-    const cls = classifyApp(a);
-    if (cls === 'compliant')    locs[loc].compliant++;
-    const tpt = a.tpt ? parseInt(a.tpt) : null;
-    if (tpt !== null && !isNaN(tpt)) { locs[loc].tptSum += tpt; locs[loc].tptCount++; }
+    const deptCode = a.officers?.departments?.code || 'Unknown';
+    const reason = a.reasons_for_leaving?.label || 'Unknown';
+    
+    if (!depts[deptCode]) {
+      depts[deptCode] = { 
+        total: 0, 
+        reasons: {} 
+      };
+    }
+    depts[deptCode].total++;
+    
+    // Track reasons
+    if (!depts[deptCode].reasons[reason]) {
+      depts[deptCode].reasons[reason] = 0;
+    }
+    depts[deptCode].reasons[reason]++;
   });
 
-  // Sort by total desc, remove Unknown if only entry
-  const keys = Object.keys(locs)
-    .filter(k => k !== 'Unknown' || Object.keys(locs).length === 1)
-    .sort((a,b) => locs[b].total - locs[a].total)
-    .slice(0, 12); // max 12 locations
+  // Sort departments by total desc, limit to top 12
+  const deptKeys = Object.keys(depts)
+    .filter(k => k !== 'Unknown' || Object.keys(depts).length === 1)
+    .sort((a,b) => depts[b].total - depts[a].total)
+    .slice(0, 12);
 
-  const unknown = Object.keys(locs).includes('Unknown') ? locs['Unknown'] : null;
-  const allKeys = [...keys, ...(unknown && keys.length > 0 ? ['Unknown'] : [])];
+  const totals = deptKeys.map(k => depts[k].total);
 
-  const compPcts = allKeys.map(k => {
-    const d = locs[k];
-    const base = d.paid > 0 ? d.paid : 0;
-    return base > 0 ? Math.round((d.compliant / base) * 100) : 0;
-  });
-  const avgTpts = allKeys.map(k => {
-    const d = locs[k];
-    return d.tptCount > 0 ? Math.round(d.tptSum / d.tptCount) : 0;
-  });
-
-  const navyBase = 'rgba(15,31,61,';
-  const goldBase = 'rgba(200,168,75,';
-
-  // Compliance bar chart
-  const ctx1 = document.getElementById('locationCompChart')?.getContext('2d');
+  // Chart 1: Retirements by Department (bar chart)
+  const ctx1 = document.getElementById('deptCountChart')?.getContext('2d');
   if (ctx1) {
-    if (locationCompInst) locationCompInst.destroy();
-    locationCompInst = new Chart(ctx1, {
+    if (deptCountInst) deptCountInst.destroy();
+    deptCountInst = new Chart(ctx1, {
       type: 'bar',
       data: {
-        labels: allKeys,
+        labels: deptKeys,
         datasets: [{
-          label: 'Compliance %',
-          data: compPcts,
-          backgroundColor: compPcts.map(p => p >= 80 ? 'rgba(30,107,66,.75)' : p >= 50 ? 'rgba(200,168,75,.7)' : 'rgba(139,26,26,.7)'),
+          label: 'Total Applications',
+          data: totals,
+          backgroundColor: 'rgba(15,31,61,0.75)',
           borderRadius: 0,
         }]
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
+        responsive: true, 
+        maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#0f1f3d', titleColor: '#c8a84b', bodyColor: '#fff', padding: 10,
+            backgroundColor: '#0f1f3d', 
+            titleColor: '#c8a84b', 
+            bodyColor: '#fff', 
+            padding: 10,
             callbacks: {
-              label: i => `${i.raw}% compliant`,
-              afterLabel: i => {
-                const k = allKeys[i.dataIndex];
-                return `${locs[k].compliant}/${locs[k].paid} paid within target`;
+              label: i => `${i.raw} applications`
+            }
+          }
+        },
+        scales: {
+          x: { 
+            ticks: { font:{size:10}, color:'#1c1c1c' }, 
+            grid:{display:false} 
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { 
+              stepSize: 1,
+              font:{size:10}, 
+              color:'#6b6559' 
+            },
+            grid: { color:'rgba(0,0,0,.05)' }
+          }
+        }
+      }
+    });
+  }
+
+  // Chart 2: Top Reasons by Department (horizontal bar chart)
+  const topReasons = deptKeys.map(k => {
+    const reasons = depts[k].reasons;
+    const sorted = Object.entries(reasons).sort((a,b) => b[1] - a[1]);
+    return sorted[0] ? sorted[0][0] : 'None';
+  });
+  
+  const topReasonCounts = deptKeys.map(k => {
+    const reasons = depts[k].reasons;
+    const sorted = Object.entries(reasons).sort((a,b) => b[1] - a[1]);
+    return sorted[0] ? sorted[0][1] : 0;
+  });
+
+  const ctx2 = document.getElementById('deptReasonChart')?.getContext('2d');
+  if (ctx2) {
+    if (deptReasonInst) deptReasonInst.destroy();
+    deptReasonInst = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: deptKeys,
+        datasets: [{
+          label: 'Top Reason Count',
+          data: topReasonCounts,
+          backgroundColor: 'rgba(200,168,75,0.75)',
+          borderRadius: 0,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f1f3d', 
+            titleColor: '#c8a84b', 
+            bodyColor: '#fff', 
+            padding: 10,
+            callbacks: {
+              label: (i) => {
+                const dept = deptKeys[i.dataIndex];
+                const reason = topReasons[i.dataIndex];
+                return `${reason}: ${i.raw} (${Math.round((i.raw/depts[dept].total)*100)}%)`;
               }
             }
           }
         },
         scales: {
-          x: { ticks: { font:{size:10}, color:'#1c1c1c' }, grid:{display:false} },
-          y: {
-            beginAtZero: true, max: 100,
-            ticks: { callback: v => v+'%', font:{size:10}, color:'#6b6559' },
-            grid: { color:'rgba(0,0,0,.05)' }
-          }
-        }
-      }
-    });
-  }
-
-  // Avg TPT bar chart
-  const ctx2 = document.getElementById('locationTptChart')?.getContext('2d');
-  if (ctx2) {
-    if (locationTptInst) locationTptInst.destroy();
-    locationTptInst = new Chart(ctx2, {
-      type: 'bar',
-      data: {
-        labels: allKeys,
-        datasets: [{
-          label: 'Avg TPT (days)',
-          data: avgTpts,
-          backgroundColor: avgTpts.map(d => d === 0 ? 'rgba(212,207,196,.5)' : d <= 49 ? 'rgba(30,107,66,.7)' : d <= 69 ? 'rgba(200,168,75,.7)' : 'rgba(139,26,26,.7)'),
-          borderRadius: 0,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#0f1f3d', titleColor: '#c8a84b', bodyColor: '#fff', padding: 10,
-            callbacks: {
-              label: i => `${i.raw} days avg`,
-              afterLabel: i => i.raw <= 49 ? '✓ Within BPR target' : i.raw <= 69 ? '⚠ Approaching limit' : '✗ Exceeds target'
-            }
-          }
-        },
-        scales: {
-          x: { ticks:{font:{size:10},color:'#1c1c1c'}, grid:{display:false} },
-          y: {
+          x: {
             beginAtZero: true,
-            ticks: { font:{size:10}, color:'#6b6559' },
+            ticks: { 
+              stepSize: 1,
+              font:{size:10}, 
+              color:'#6b6559' 
+            },
             grid: { color:'rgba(0,0,0,.05)' }
+          },
+          y: { 
+            ticks: { font:{size:10}, color:'#1c1c1c' }, 
+            grid:{display:false} 
           }
         }
       }
     });
   }
 
-  // Location summary table
-  const tbody = document.getElementById('location-tbody');
+  // Department summary table
+  const tbody = document.getElementById('department-tbody');
   if (!tbody) return;
-  if (!allKeys.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted)">No location data yet — users need to set their station in their profile</td></tr>';
+  
+  if (!deptKeys.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted)">No department data available</td></tr>';
     return;
   }
-  tbody.innerHTML = allKeys.map((loc, i) => {
-    const d = locs[loc];
-    const compPct = d.paid > 0 ? Math.round((d.compliant/d.paid)*100) : null;
-    const avgTpt  = d.tptCount > 0 ? Math.round(d.tptSum/d.tptCount) : null;
-    const perfColor = compPct === null ? 'var(--muted)' : compPct >= 80 ? '#1e6b42' : compPct >= 50 ? '#7a5200' : '#8b1a1a';
-    const perfLabel = compPct === null ? 'No paid apps' : compPct >= 80 ? '✓ On target' : compPct >= 50 ? '⚠ Needs attention' : '✗ Below target';
-    const barW = compPct !== null ? compPct : 0;
-    const barC = compPct >= 80 ? '#1e6b42' : compPct >= 50 ? '#c8a84b' : '#8b1a1a';
+  
+  tbody.innerHTML = deptKeys.map((dept, i) => {
+    const d = depts[dept];
+    const reasons = Object.entries(d.reasons).sort((a,b) => b[1] - a[1]);
+    const topReason = reasons[0] ? reasons[0][0] : 'None';
+    const topCount = reasons[0] ? reasons[0][1] : 0;
+    const topPct = d.total > 0 ? Math.round((topCount / d.total) * 100) : 0;
     const rowBg = i % 2 === 0 ? 'var(--white)' : 'var(--cream)';
+    
     return `
       <tr style="background:${rowBg}">
-        <td style="padding:10px 16px;font-weight:600;color:var(--navy)">${loc}</td>
-        <td style="padding:10px 16px;text-align:center">${d.total}</td>
-        <td style="padding:10px 16px;text-align:center">${d.paid}</td>
-        <td style="padding:10px 16px;text-align:center">${d.compliant}</td>
-        <td style="padding:10px 16px;text-align:center;font-weight:700;color:${perfColor}">${compPct !== null ? compPct+'%' : '—'}</td>
-        <td style="padding:10px 16px;text-align:center;font-weight:600;color:${avgTpt !== null ? (avgTpt<=49?'#1e6b42':avgTpt<=69?'#7a5200':'#8b1a1a') : 'var(--muted)'}">${avgTpt !== null ? avgTpt+'d' : '—'}</td>
-        <td style="padding:10px 16px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="flex:1;height:6px;background:var(--border);border-radius:0">
-              <div style="height:100%;width:${barW}%;background:${barC};transition:width 1s ease"></div>
-            </div>
-            <span style="font-size:.72rem;color:${perfColor};font-weight:600;white-space:nowrap">${perfLabel}</span>
-          </div>
-        </td>
+        <td style="padding:10px 16px;font-weight:600;color:var(--navy)">${dept}</td>
+        <td style="padding:10px 16px;text-align:center;font-weight:600">${d.total}</td>
+        <td style="padding:10px 16px;color:var(--ink)">${topReason}</td>
+        <td style="padding:10px 16px;text-align:center;font-weight:600;color:var(--gold)">${topCount}</td>
+        <td style="padding:10px 16px;text-align:center;font-weight:700;color:var(--navy)">${topPct}%</td>
       </tr>`;
   }).join('');
 }
+
 
   // ══════════════════════════════════════════════════════
   //  AUTO LOGOUT — inactivity timer

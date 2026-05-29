@@ -1,16 +1,9 @@
-1.enforce (compliance to payment of terminal benefits (25 working days for retirement/withdrawal/Dismissal)
-(85 working days for death)across all pages)
-2.colour coding to within and outside enforcr(some entries are green while Dismissal is at 84 days)
-3.remove location analytics as used in hq only(replace with )
-4.fix (Death cases not included) on the dashboard to show its a comment /somesort
-5.want clickability like on stat cards for compliance gauge and Compliance by
- Department to redirect to entries and filter to reflect values on dashboard
+
+
+3.remove location analytics as used in hq only(replace with Department ANALYTICSE.G HOW MANY IN DIC ARE RETIRING WHICH REASN IS HIGHER BY Dept Expected )
+
+
 6.summarise tracking endicators dropdown menu like that of entries(period)(grop by year the expand to individual months)
-7.edit tab on entries shoul not be user ediitable directly insteead enforce that it calculates on the values and 
-read only.same as public holidays
-8.system records to show update logs(when and waht was been updated(updates can be the commit messages in git hub and make 
-it auto if possible))
-9,review my rights as super_admin i changed a user rights(from admin-user)but on their end its still admin
-10.profile is loading slow .check out
-11.compile codethat is the same into 1 file and link to htmls instead of all files carrying same code.e.g header styling is same across 
-but each page contains it,same as js
+
+
+

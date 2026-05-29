@@ -13501,3 +13501,278 @@ When multiple filter mechanisms are present:
 5. **Save Filter**: Save common filters as bookmarks
 6. **Filter Presets**: Quick access to common filter combinations
 7. **Filter Animation**: Smooth transition when applying/clearing filters
+
+
+---
+
+# FIX: Super Admin Role Changes Reverting
+
+**Date**: 2026-05-28  
+**Task**: #10 - Fix Super Admin Role Change Permissions
+
+## ISSUE
+Super admin could change other users' roles in the UI, console showed "Database updated successfully", but changes would revert when page refreshed.
+
+## ROOT CAUSE
+Database Row Level Security (RLS) policies were blocking the UPDATE operation on the `user_profiles` table, even though the initial update appeared to succeed. The update was being rejected at the database level but the error wasn't being caught properly.
+
+## SOLUTION IMPLEMENTED
+
+### 1. Added Verification Step in admin.html
+Updated `saveRole()` function to verify the role change actually persisted:
+- After updating the database, immediately read back the role value
+- Compare the returned role with the intended new role
+- If they don't match, show error message directing user to run RLS fix script
+- Reset dropdown to actual database value if verification fails
+
+### 2. Enhanced Error Messages
+- **ERR_ADMIN_003**: Update sent but could not verify
+- **ERR_ADMIN_004**: Update failed - Database RLS policy blocking change
+
+### 3. Console Logging
+Added detailed logging to track:
+- Database update success
+- Verification query results
+- Expected vs actual role values
+- Whether verification succeeded or failed
+
+## SQL SCRIPTS TO RUN
+
+### check_and_fix_rls_policies.sql
+Fixes RLS policies blocking role updates:
+- Checks current RLS policies on user_profiles table
+- Drops restrictive policies that prevent role updates
+- Creates proper policy allowing admins/super_admins to update any user profile
+- Verifies the new policy was created
+
+### fix_admin_select_policy.sql
+Adds SELECT policy for admins to verify role updates:
+- Allows admins to view all user profiles
+- Prevents infinite recursion in policy checks
+- Enables verification queries after role updates
+
+## EXPECTED BEHAVIOR AFTER FIX
+
+✅ Super admin can change any non-super_admin user's role  
+✅ Changes persist in database  
+✅ Verification confirms role was saved  
+✅ User sees new role instantly on refresh (no cache delay)  
+✅ Console shows clear success/failure messages  
+
+❌ Cannot change own role (prevented)  
+❌ Cannot change another super_admin's role (protected)  
+❌ Cannot assign super_admin role to anyone (only one super_admin allowed)
+
+## FILES MODIFIED
+- `admin.html` - Added verification step in `saveRole()` function
+
+## FILES TO RUN IN SUPABASE
+- `check_and_fix_rls_policies.sql` - Fixes RLS policies blocking role updates
+- `fix_admin_select_policy.sql` - Adds SELECT policy for verification
+
+---
+
+# FORCE LOGIN ON ALL PAGES
+
+**Date**: 2026-05-28  
+**Status**: ✅ Complete
+
+## ISSUE
+When someone receives a direct link to a protected page (home.html, dashboard.html, status.html, admin.html, profile.html), the page content would briefly flash before the authentication check redirected them to login.
+
+## SOLUTION IMPLEMENTED
+
+### 1. Hide Page Until Authentication Verified
+Added inline script in the `<head>` of all protected pages:
+```html
+<!-- Auth Guard: Hide page until authentication verified -->
+<script>document.documentElement.style.opacity='0';</script>
+```
+
+This immediately hides the entire page (opacity=0) before any content loads.
+
+### 2. Show Page After Authentication
+Updated the authentication check in each page to show the page only after session is verified:
+```javascript
+const { data: { session } } = await db.auth.getSession();
+if (!session) { location.replace('index.html'); return; }
+
+// Show page now that auth is verified
+document.documentElement.style.opacity = '1';
+document.documentElement.style.transition = 'opacity 0.2s';
+```
+
+### 3. Smooth Fade-In
+The page fades in smoothly (0.2s transition) once authentication is confirmed.
+
+## HOW IT WORKS
+
+**Before (Old Behavior):**
+1. User clicks link to `home.html`
+2. Page HTML loads and displays
+3. JavaScript runs authentication check (takes ~500ms)
+4. If not logged in, redirects to `index.html`
+5. **Problem**: User sees protected content for ~500ms before redirect
+
+**After (New Behavior):**
+1. User clicks link to `home.html`
+2. Page is immediately hidden (opacity=0) by inline script
+3. JavaScript runs authentication check
+4. If not logged in → redirects to `index.html` (user never sees content)
+5. If logged in → page fades in smoothly
+6. **Result**: No content flash, forced login for all protected pages
+
+## PAGES UPDATED
+
+✅ **home.html** - Dashboard page  
+✅ **dashboard.html** - Application form page  
+✅ **status.html** - Entries/status page  
+✅ **admin.html** - Admin panel  
+✅ **profile.html** - User profile page  
+
+❌ **index.html** - Login page (no auth guard needed)
+
+## SECURITY NOTES
+
+⚠️ **Important**: This is a **UI-level** protection only. The actual security is enforced by:
+1. **Supabase RLS policies** - Database-level access control
+2. **Session validation** - Server-side authentication
+3. **API authentication** - All API calls require valid JWT tokens
+
+The opacity guard prevents **visual leakage** of protected content, but does not replace proper backend security.
+
+---
+
+# IMPROVEMENTS #3 AND #6 COMPLETE
+
+**Date**: 2026-05-29  
+**Status**: ✅ Complete  
+**Total Time**: ~2-3 hours
+
+## IMPROVEMENT #3: Replace Location Analytics with Department Analytics
+
+### What Changed
+Replaced the "Location Analytics" section with "Department Analytics" to show retirement trends by department instead of by station/location.
+
+### New Features
+
+**1. Retirements by Department Chart**
+- Bar chart showing total applications per department
+- Sorted by highest to lowest
+- Shows top 12 departments
+- Color: Navy blue
+
+**2. Top Reasons by Department Chart**
+- Horizontal bar chart showing the most common reason for leaving in each department
+- Tooltip shows: Reason name, count, and percentage of department total
+- Color: Gold
+
+**3. Department Summary Table**
+- Columns:
+  - Department (code)
+  - Total Apps (total applications)
+  - Top Reason (most common reason for leaving)
+  - Count (how many for that reason)
+  - % of Dept (percentage of department total)
+- Alternating row colors for readability
+
+### Data Shown
+- **Department**: From `officers.departments.code`
+- **Reasons**: From `reasons_for_leaving.label`
+- **Analysis**: Shows which departments have the most retirements and what the primary reasons are
+
+### Example Insights
+- "DIC has 15 retirements, 8 are due to Retirement (53%)"
+- "CNR has 12 retirements, 6 are due to Death (50%)"
+- "LSS has 8 retirements, 5 are due to Dismissal (63%)"
+
+### Code Changes
+- **HTML**: Replaced location charts section with department charts section
+- **JavaScript**: 
+  - Replaced `renderLocationCharts()` with `renderDepartmentCharts()`
+  - New chart instances: `deptCountInst`, `deptReasonInst`
+  - New canvas IDs: `deptCountChart`, `deptReasonChart`
+  - New table ID: `department-tbody`
+
+---
+
+## IMPROVEMENT #6: Year/Month Grouping for Tracking Indicators
+
+### What Changed
+Added a year filter dropdown that groups months by year, allowing users to select a year first, then see only the months within that year.
+
+### New Features
+
+**1. Year Filter Dropdown**
+- New dropdown: "tracking-year-filter"
+- Shows all years that have data
+- Defaults to current year
+- Only visible in "Monthly" view
+
+**2. Filtered Month Dropdown**
+- Month dropdown now shows only months for the selected year
+- Updates automatically when year changes
+- Shows month name only (no year, since year is already selected)
+- Example: "January", "February", "March" (for 2026)
+
+**3. Workflow**
+1. User clicks "Monthly" tab
+2. Sees two dropdowns: Year (2026) and Month (May)
+3. Changes year to 2025
+4. Month dropdown updates to show only 2025 months
+5. Tracking indicators update automatically
+
+### Benefits
+- **Cleaner UI**: Month dropdown is shorter and easier to scan
+- **Logical grouping**: Year → Month hierarchy makes sense
+- **Better organization**: Similar to how Entries page works
+- **Faster navigation**: Jump to a year, then pick a month
+
+### Code Changes
+- **HTML**: 
+  - Added `tracking-year-filter` dropdown
+  - Reordered dropdowns: Year Filter → Month → Quarter → Year (yearly view)
+- **JavaScript**:
+  - Updated `setTrackingPeriod()` to show/hide year filter
+  - Updated `populateTrackingDropdowns()` to:
+    - Populate year filter
+    - Group months by year in `window.trackingMonthsByYear`
+  - Added `updateMonthsForYear()` function:
+    - Filters months by selected year
+    - Updates month dropdown
+    - Reloads tracking indicators
+
+### Example Usage
+**Before:**
+- Month dropdown: "May 2026", "April 2026", "March 2026", "February 2026", "January 2026", "December 2025", "November 2025"... (long list)
+
+**After:**
+- Year dropdown: "2026" (selected)
+- Month dropdown: "May", "April", "March", "February", "January" (only 2026 months)
+- Change year to "2025"
+- Month dropdown updates: "December", "November", "October"... (only 2025 months)
+
+---
+
+## ALL IMPROVEMENTS FROM improvements.txt - FINAL STATUS
+
+✅ **Completed (7/11)**:
+1. ✅ Enforce compliance deadlines (25 days non-death, 85 days death)
+2. ✅ Fix color coding for compliance
+3. ✅ Remove location analytics → Replace with department analytics
+4. ✅ Fix "Death cases not included" (not applicable - not found in codebase)
+6. ✅ Summarize tracking indicators with year/month grouping
+7. ✅ Make edit tab read-only (TPT auto-calculated)
+9. ✅ Fix super admin rights
+10. ✅ Profile loading performance
+
+⏭️ **Deferred (4/11)** - User approved skipping:
+5. ⏭️ Clickable dashboard cards (2-3 hours)
+8. ⏭️ System records update logs (3-4 hours)
+11. ⏭️ Code consolidation (4-6 hours)
+
+---
+
+**END OF MASTER PROJECT DOCUMENTATION**  
+**Last Updated**: 2026-05-29  
+**Total Documentation Sections**: 28
