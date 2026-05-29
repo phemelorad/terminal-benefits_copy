@@ -733,21 +733,12 @@
         <button class="period-tab" id="tracking-quarterly-btn" onclick="setTrackingPeriod('quarterly',this)">Quarterly</button>
         <button class="period-tab" id="tracking-yearly-btn" onclick="setTrackingPeriod('yearly',this)">Yearly</button>
       </div>
-      <!-- Year selector (shows for monthly view) -->
-      <select id="tracking-year-filter" class="tracking-select" style="min-width:120px;display:inline-block" onchange="updateMonthsForYear()">
-        <!-- Populated dynamically -->
+      <!-- Hierarchical Period Selector -->
+      <select id="tracking-period-select" class="tracking-select" style="min-width:220px;display:inline-block" onchange="loadTrackingIndicators()">
+        <!-- Populated dynamically with optgroups -->
       </select>
-      <!-- Month selector (filtered by year) -->
-      <select id="tracking-month-select" class="tracking-select" style="min-width:180px;display:inline-block" onchange="loadTrackingIndicators()">
-        <!-- Populated dynamically -->
-      </select>
-      <!-- Quarter selector -->
-      <select id="tracking-quarter-select" class="tracking-select" style="min-width:200px;display:none" onchange="loadTrackingIndicators()">
-        <!-- Populated dynamically -->
-      </select>
-      <!-- Year selector (for yearly view) -->
-      <select id="tracking-year-select" class="tracking-select" style="min-width:140px;display:none" onchange="loadTrackingIndicators()">
-        <!-- Populated dynamically -->
+    </div>
+  </div>
       </select>
     </div>
   </div>
@@ -1467,28 +1458,8 @@ function setTrackingPeriod(period, btn) {
   document.querySelectorAll('#tracking-monthly-btn, #tracking-quarterly-btn, #tracking-yearly-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   
-  // Show/hide appropriate dropdowns
-  const yearFilter = document.getElementById('tracking-year-filter');
-  const monthSelect = document.getElementById('tracking-month-select');
-  const quarterSelect = document.getElementById('tracking-quarter-select');
-  const yearSelect = document.getElementById('tracking-year-select');
-  
-  if (period === 'monthly') {
-    yearFilter.style.display = 'inline-block';
-    monthSelect.style.display = 'inline-block';
-    quarterSelect.style.display = 'none';
-    yearSelect.style.display = 'none';
-  } else if (period === 'quarterly') {
-    yearFilter.style.display = 'none';
-    monthSelect.style.display = 'none';
-    quarterSelect.style.display = 'inline-block';
-    yearSelect.style.display = 'none';
-  } else { // yearly
-    yearFilter.style.display = 'none';
-    monthSelect.style.display = 'none';
-    quarterSelect.style.display = 'none';
-    yearSelect.style.display = 'inline-block';
-  }
+  // Repopulate dropdown for the selected period
+  populateTrackingDropdowns();
   
   loadTrackingIndicators();
 }
@@ -1526,11 +1497,15 @@ function getQuarterMonths(quarter, fiscalYear) {
 }
 
 function populateTrackingDropdowns() {
-  // Get all unique months and years from database entries
+  const periodSelect = document.getElementById('tracking-period-select');
+  if (!periodSelect) return;
+  
+  // Get all unique months, quarters, and years from database entries
   const months = new Set();
   const years = new Set();
   const quarters = new Set();
-  const monthsByYear = {}; // Group months by year
+  const monthsByYear = {};
+  const quartersByYear = {};
   
   allApps.forEach(app => {
     if (app.submitted_at) {
@@ -1552,127 +1527,168 @@ function populateTrackingDropdowns() {
       const qInfo = getQuarterInfo(month, year);
       const quarterKey = `${qInfo.fiscalYear}-Q${qInfo.quarter}`;
       quarters.add(quarterKey);
+      
+      // Group quarters by fiscal year
+      if (!quartersByYear[qInfo.fiscalYear]) quartersByYear[qInfo.fiscalYear] = [];
+      if (!quartersByYear[qInfo.fiscalYear].includes(quarterKey)) {
+        quartersByYear[qInfo.fiscalYear].push(quarterKey);
+      }
     }
   });
   
-  // Sort months, quarters, and years
-  const sortedMonths = Array.from(months).sort().reverse();
-  const sortedQuarters = Array.from(quarters).sort().reverse();
   const sortedYears = Array.from(years).sort().reverse();
-  
-  // Get current month/year/quarter
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const currentYear = now.getFullYear();
   const currentQInfo = getQuarterInfo(now.getMonth() + 1, now.getFullYear());
   const currentQuarter = `${currentQInfo.fiscalYear}-Q${currentQInfo.quarter}`;
-  
-  // Populate year filter dropdown (for monthly view)
-  const yearFilter = document.getElementById('tracking-year-filter');
-  yearFilter.innerHTML = sortedYears.map(year => {
-    const selected = year === currentYear ? 'selected' : '';
-    return `<option value="${year}" ${selected}>${year}</option>`;
-  }).join('');
-  
-  // Store monthsByYear globally for filtering
-  window.trackingMonthsByYear = monthsByYear;
-  
-  // Populate month dropdown (initially for current year)
-  updateMonthsForYear();
-  
-  // Populate quarter dropdown
-  const quarterSelect = document.getElementById('tracking-quarter-select');
-  quarterSelect.innerHTML = sortedQuarters.map(quarterKey => {
-    const [fiscalYear, q] = quarterKey.split('-Q');
-    const quarter = parseInt(q);
-    let label = '';
-    
-    if (quarter === 1) label = `Q1 (Apr-Jun ${fiscalYear})`;
-    else if (quarter === 2) label = `Q2 (Jul-Sep ${fiscalYear})`;
-    else if (quarter === 3) label = `Q3 (Oct-Dec ${fiscalYear})`;
-    else label = `Q4 (Jan-Mar ${parseInt(fiscalYear) + 1})`;
-    
-    const selected = quarterKey === currentQuarter ? 'selected' : '';
-    return `<option value="${quarterKey}" ${selected}>${label}</option>`;
-  }).join('');
-  
-  // Populate year dropdown (for yearly view)
-  const yearSelect = document.getElementById('tracking-year-select');
-  yearSelect.innerHTML = sortedYears.map(year => {
-    const selected = year === currentYear ? 'selected' : '';
-    return `<option value="${year}" ${selected}>${year}</option>`;
-  }).join('');
-}
-
-// Update month dropdown based on selected year
-function updateMonthsForYear() {
-  const yearFilter = document.getElementById('tracking-year-filter');
-  const monthSelect = document.getElementById('tracking-month-select');
-  const selectedYear = parseInt(yearFilter.value);
-  
-  const monthsByYear = window.trackingMonthsByYear || {};
-  const monthsForYear = monthsByYear[selectedYear] || [];
-  
-  // Sort months descending (most recent first)
-  const sortedMonths = monthsForYear.sort().reverse();
+  const currentYear = now.getFullYear();
   
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                       'July', 'August', 'September', 'October', 'November', 'December'];
   
-  // Get current month for default selection
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  let html = '';
   
-  monthSelect.innerHTML = sortedMonths.map(monthKey => {
-    const [year, month] = monthKey.split('-');
-    const monthName = monthNames[parseInt(month) - 1];
-    const selected = monthKey === currentMonth ? 'selected' : '';
-    return `<option value="${monthKey}" ${selected}>${monthName}</option>`;
-  }).join('');
-  
-  // If no months for this year, show placeholder
-  if (!sortedMonths.length) {
-    monthSelect.innerHTML = '<option value="">No data for this year</option>';
+  if (trackingPeriod === 'monthly') {
+    // Monthly view: Current Month, All Time, then years with months
+    html += `<option value="current">Current Month</option>`;
+    html += `<option value="all">All Time</option>`;
+    
+    sortedYears.forEach(year => {
+      const yearMonths = (monthsByYear[year] || []).sort().reverse();
+      const count = yearMonths.length;
+      html += `<optgroup label="${year} (${count})">`;
+      
+      yearMonths.forEach(monthKey => {
+        const [y, m] = monthKey.split('-');
+        const monthName = monthNames[parseInt(m) - 1];
+        const selected = monthKey === currentMonth ? 'selected' : '';
+        html += `<option value="${monthKey}" ${selected}>&nbsp;&nbsp;${monthName}</option>`;
+      });
+      
+      html += `</optgroup>`;
+    });
+    
+  } else if (trackingPeriod === 'quarterly') {
+    // Quarterly view: Current Quarter, All Time, then fiscal years with quarters
+    html += `<option value="current">Current Quarter</option>`;
+    html += `<option value="all">All Time</option>`;
+    
+    const sortedFiscalYears = Array.from(new Set(Object.keys(quartersByYear).map(Number))).sort().reverse();
+    
+    sortedFiscalYears.forEach(fiscalYear => {
+      const yearQuarters = (quartersByYear[fiscalYear] || []).sort().reverse();
+      const count = yearQuarters.length;
+      html += `<optgroup label="FY ${fiscalYear} (${count})">`;
+      
+      yearQuarters.forEach(quarterKey => {
+        const [fy, q] = quarterKey.split('-Q');
+        const quarter = parseInt(q);
+        let label = '';
+        
+        if (quarter === 1) label = `Q1 (Apr-Jun ${fy})`;
+        else if (quarter === 2) label = `Q2 (Jul-Sep ${fy})`;
+        else if (quarter === 3) label = `Q3 (Oct-Dec ${fy})`;
+        else label = `Q4 (Jan-Mar ${parseInt(fy) + 1})`;
+        
+        const selected = quarterKey === currentQuarter ? 'selected' : '';
+        html += `<option value="${quarterKey}" ${selected}>&nbsp;&nbsp;${label}</option>`;
+      });
+      
+      html += `</optgroup>`;
+    });
+    
+  } else { // yearly
+    // Yearly view: Current Year, All Time, then individual years
+    html += `<option value="current">Current Year</option>`;
+    html += `<option value="all">All Time</option>`;
+    
+    sortedYears.forEach(year => {
+      const selected = year === currentYear ? 'selected' : '';
+      html += `<option value="${year}" ${selected}>${year}</option>`;
+    });
   }
   
-  // Reload indicators with new month selection
-  loadTrackingIndicators();
+  periodSelect.innerHTML = html;
 }
 
+// Remove old updateMonthsForYear function - no longer needed
+
 async function loadTrackingIndicators() {
-  // Safety check - ensure dropdowns exist
-  const monthSelect = document.getElementById('tracking-month-select');
-  const quarterSelect = document.getElementById('tracking-quarter-select');
-  const yearSelect = document.getElementById('tracking-year-select');
+  // Get the period selector
+  const periodSelect = document.getElementById('tracking-period-select');
   
-  if (!monthSelect || !quarterSelect || !yearSelect) {
-    console.error('[ERR_LOAD_001] Tracking dropdowns not found');
+  if (!periodSelect) {
+    console.error('[ERR_LOAD_001] Tracking period selector not found');
     return;
   }
 
+  const selectedValue = periodSelect.value;
   let filteredApps = [];
 
   if (trackingPeriod === 'monthly') {
-    // Get selected month
-    const selectedMonth = monthSelect.value;
-    if (!selectedMonth) {
-      console.warn('No month selected');
-      return;
+    if (selectedValue === 'current') {
+      // Current month
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      filteredApps = allApps.filter(a => {
+        if (!a.submitted_at) return false;
+        return a.submitted_at.substring(0, 7) === currentMonth;
+      });
+    } else if (selectedValue === 'all') {
+      // All time
+      filteredApps = allApps;
+    } else {
+      // Specific month (YYYY-MM format)
+      filteredApps = allApps.filter(a => {
+        if (!a.submitted_at) return false;
+        return a.submitted_at.substring(0, 7) === selectedValue;
+      });
     }
-    filteredApps = allApps.filter(a => {
-      if (!a.submitted_at) return false;
-      return a.submitted_at.substring(0, 7) === selectedMonth;
-    });
   } else if (trackingPeriod === 'quarterly') {
-    // Get selected quarter
-    const selectedQuarter = quarterSelect.value;
-    if (!selectedQuarter) {
-      console.warn('No quarter selected');
-      return;
+    if (selectedValue === 'current') {
+      // Current quarter
+      const now = new Date();
+      const qInfo = getQuarterInfo(now.getMonth() + 1, now.getFullYear());
+      const quarterMonths = getQuarterMonths(qInfo.quarter, qInfo.fiscalYear);
+      filteredApps = allApps.filter(a => {
+        if (!a.submitted_at) return false;
+        const monthKey = a.submitted_at.substring(0, 7);
+        return quarterMonths.includes(monthKey);
+      });
+    } else if (selectedValue === 'all') {
+      // All time
+      filteredApps = allApps;
+    } else {
+      // Specific quarter (YYYY-QN format)
+      const [fiscalYear, q] = selectedValue.split('-Q');
+      const quarter = parseInt(q);
+      const quarterMonths = getQuarterMonths(quarter, parseInt(fiscalYear));
+      filteredApps = allApps.filter(a => {
+        if (!a.submitted_at) return false;
+        const monthKey = a.submitted_at.substring(0, 7);
+        return quarterMonths.includes(monthKey);
+      });
     }
-    const [fiscalYear, q] = selectedQuarter.split('-Q');
-    const quarter = parseInt(q);
-    const quarterMonths = getQuarterMonths(quarter, parseInt(fiscalYear));
+  } else { // yearly
+    if (selectedValue === 'current') {
+      // Current year
+      const currentYear = new Date().getFullYear();
+      filteredApps = allApps.filter(a => {
+        if (!a.submitted_at) return false;
+        return new Date(a.submitted_at).getFullYear() === currentYear;
+      });
+    } else if (selectedValue === 'all') {
+      // All time
+      filteredApps = allApps;
+    } else {
+      // Specific year
+      const year = parseInt(selectedValue);
+      filteredApps = allApps.filter(a => {
+        if (!a.submitted_at) return false;
+        return new Date(a.submitted_at).getFullYear() === year;
+      });
+    }
+  }
     
     filteredApps = allApps.filter(a => {
       if (!a.submitted_at) return false;
