@@ -929,26 +929,26 @@
   <!-- ── DEPARTMENT ANALYTICS ──────────────────────────────────── -->
   <div class="section-header fade-in" style="margin-top:32px;margin-bottom:20px">
     <h2 class="section-title">Department Analytics</h2>
-    <p class="section-sub">Retirement trends and reasons broken down by department</p>
+    <p class="section-sub">Application bottlenecks and processing time by reason</p>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px">
     <div class="chart-card fade-in">
       <div class="chart-header">
-        <div class="chart-title">Retirements by Department</div>
-        <div class="chart-sub">Total applications per department</div>
+        <div class="chart-title">Pending Applications by Stage</div>
+        <div class="chart-sub">Identify bottlenecks in the process</div>
       </div>
       <div style="position:relative;height:240px">
-        <canvas id="deptCountChart"></canvas>
+        <canvas id="pendingByStageChart"></canvas>
       </div>
     </div>
     <div class="chart-card fade-in">
       <div class="chart-header">
-        <div class="chart-title">Top Reasons by Department</div>
-        <div class="chart-sub">Most common reason for leaving per department</div>
+        <div class="chart-title">Average Processing Time by Reason</div>
+        <div class="chart-sub">Days from notice to payment by reason for leaving</div>
       </div>
       <div style="position:relative;height:240px">
-        <canvas id="deptReasonChart"></canvas>
+        <canvas id="avgTptByReasonChart"></canvas>
       </div>
     </div>
   </div>
@@ -2488,11 +2488,216 @@ function renderYearlyTable() {
 }
 
 // ── Department Charts ─────────────────────────────────────────────
-let deptCountInst = null, deptReasonInst = null;
+let pendingByStageInst = null, avgTptByReasonInst = null;
 
 function renderDepartmentCharts() {
   // Use current month data only
   const monthApps = getCurrentMonthApps();
+  
+  // ═══════════════════════════════════════════════════════════════
+  // CHART 1: Pending Applications by Stage
+  // ═══════════════════════════════════════════════════════════════
+  
+  const stages = {
+    'Submitted': 0,
+    'File Prepared': 0,
+    'Leave Paid': 0,
+    'Submitted to BPOPF': 0,
+    'Awaiting Approval': 0
+  };
+  
+  monthApps.forEach(a => {
+    // Only count non-paid applications
+    if (a.status !== 'Paid') {
+      // Determine current stage based on which dates are filled
+      if (!a.date_submitted_to_mfed) {
+        stages['Submitted']++;
+      } else if (!a.date_leave_days_paid && a.reasons_for_leaving?.label !== 'Death') {
+        stages['File Prepared']++;
+      } else if (!a.date_submitted_to_bpopf) {
+        stages['Leave Paid']++;
+      } else if (!a.actual_date_paid) {
+        stages['Submitted to BPOPF']++;
+      } else if (a.status === 'Awaiting Approval') {
+        stages['Awaiting Approval']++;
+      }
+    }
+  });
+  
+  const stageLabels = Object.keys(stages);
+  const stageCounts = Object.values(stages);
+  
+  const ctx1 = document.getElementById('pendingByStageChart')?.getContext('2d');
+  if (ctx1) {
+    if (pendingByStageInst) pendingByStageInst.destroy();
+    pendingByStageInst = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: stageLabels,
+        datasets: [{
+          label: 'Pending Applications',
+          data: stageCounts,
+          backgroundColor: [
+            'rgba(30,107,66,0.75)',   // Submitted - green
+            'rgba(200,168,75,0.75)',  // File Prepared - gold
+            'rgba(15,31,61,0.75)',    // Leave Paid - navy
+            'rgba(146,96,10,0.75)',   // Submitted to BPOPF - dark gold
+            'rgba(139,26,26,0.75)'    // Awaiting Approval - red
+          ],
+          borderRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f1f3d', 
+            titleColor: '#c8a84b', 
+            bodyColor: '#fff', 
+            padding: 10,
+            callbacks: {
+              label: i => `${i.raw} application${i.raw !== 1 ? 's' : ''} pending`,
+              afterLabel: i => {
+                const total = stageCounts.reduce((a,b) => a+b, 0);
+                const pct = total > 0 ? Math.round((i.raw / total) * 100) : 0;
+                return `${pct}% of pending applications`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            ticks: { 
+              font:{size:9}, 
+              color:'#1c1c1c',
+              maxRotation: 45,
+              minRotation: 45
+            }, 
+            grid:{display:false} 
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { 
+              stepSize: 1,
+              font:{size:10}, 
+              color:'#6b6559' 
+            },
+            grid: { color:'rgba(0,0,0,.05)' }
+          }
+        }
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CHART 2: Average Processing Time by Reason
+  // ═══════════════════════════════════════════════════════════════
+  
+  const reasonStats = {};
+  
+  monthApps.forEach(a => {
+    const reason = a.reasons_for_leaving?.label || 'Unknown';
+    const tpt = a.tpt ? parseInt(a.tpt) : null;
+    
+    if (!reasonStats[reason]) {
+      reasonStats[reason] = { sum: 0, count: 0 };
+    }
+    
+    if (tpt !== null && !isNaN(tpt) && tpt > 0) {
+      reasonStats[reason].sum += tpt;
+      reasonStats[reason].count++;
+    }
+  });
+  
+  // Calculate averages and sort by TPT (highest first)
+  const reasonData = Object.entries(reasonStats)
+    .filter(([reason, stats]) => stats.count > 0)
+    .map(([reason, stats]) => ({
+      reason,
+      avgTpt: Math.round(stats.sum / stats.count),
+      count: stats.count
+    }))
+    .sort((a, b) => b.avgTpt - a.avgTpt);
+  
+  const reasonLabels = reasonData.map(d => d.reason);
+  const avgTpts = reasonData.map(d => d.avgTpt);
+  
+  // Color based on compliance thresholds
+  const colors = avgTpts.map(tpt => {
+    if (tpt <= 25) return 'rgba(30,107,66,0.75)';      // Green - compliant (non-death)
+    if (tpt <= 49) return 'rgba(200,168,75,0.75)';    // Gold - approaching limit
+    if (tpt <= 85) return 'rgba(146,96,10,0.75)';     // Dark gold - death compliant
+    return 'rgba(139,26,26,0.75)';                     // Red - non-compliant
+  });
+  
+  const ctx2 = document.getElementById('avgTptByReasonChart')?.getContext('2d');
+  if (ctx2) {
+    if (avgTptByReasonInst) avgTptByReasonInst.destroy();
+    avgTptByReasonInst = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: reasonLabels,
+        datasets: [{
+          label: 'Avg TPT (days)',
+          data: avgTpts,
+          backgroundColor: colors,
+          borderRadius: 0,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, 
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f1f3d', 
+            titleColor: '#c8a84b', 
+            bodyColor: '#fff', 
+            padding: 10,
+            callbacks: {
+              label: (i) => {
+                const data = reasonData[i.dataIndex];
+                return `${i.raw} days average (${data.count} application${data.count !== 1 ? 's' : ''})`;
+              },
+              afterLabel: (i) => {
+                const tpt = i.raw;
+                const reason = reasonLabels[i.dataIndex];
+                
+                // Determine compliance status
+                if (reason === 'Death') {
+                  return tpt <= 85 ? '✓ Within 85-day standard' : '✗ Exceeds 85-day standard';
+                } else {
+                  return tpt <= 25 ? '✓ Within 25-day standard' : '✗ Exceeds 25-day standard';
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { 
+              font:{size:10}, 
+              color:'#6b6559',
+              callback: v => v + 'd'
+            },
+            grid: { color:'rgba(0,0,0,.05)' }
+          },
+          y: { 
+            ticks: { font:{size:10}, color:'#1c1c1c' }, 
+            grid:{display:false} 
+          }
+        }
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DEPARTMENT SUMMARY TABLE
+  // ═══════════════════════════════════════════════════════════════
   
   // Build per-department stats
   const depts = {};
@@ -2520,123 +2725,6 @@ function renderDepartmentCharts() {
     .filter(k => k !== 'Unknown' || Object.keys(depts).length === 1)
     .sort((a,b) => depts[b].total - depts[a].total)
     .slice(0, 12);
-
-  const totals = deptKeys.map(k => depts[k].total);
-
-  // Chart 1: Retirements by Department (bar chart)
-  const ctx1 = document.getElementById('deptCountChart')?.getContext('2d');
-  if (ctx1) {
-    if (deptCountInst) deptCountInst.destroy();
-    deptCountInst = new Chart(ctx1, {
-      type: 'bar',
-      data: {
-        labels: deptKeys,
-        datasets: [{
-          label: 'Total Applications',
-          data: totals,
-          backgroundColor: 'rgba(15,31,61,0.75)',
-          borderRadius: 0,
-        }]
-      },
-      options: {
-        responsive: true, 
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#0f1f3d', 
-            titleColor: '#c8a84b', 
-            bodyColor: '#fff', 
-            padding: 10,
-            callbacks: {
-              label: i => `${i.raw} applications`
-            }
-          }
-        },
-        scales: {
-          x: { 
-            ticks: { font:{size:10}, color:'#1c1c1c' }, 
-            grid:{display:false} 
-          },
-          y: {
-            beginAtZero: true,
-            ticks: { 
-              stepSize: 1,
-              font:{size:10}, 
-              color:'#6b6559' 
-            },
-            grid: { color:'rgba(0,0,0,.05)' }
-          }
-        }
-      }
-    });
-  }
-
-  // Chart 2: Top Reasons by Department (horizontal bar chart)
-  const topReasons = deptKeys.map(k => {
-    const reasons = depts[k].reasons;
-    const sorted = Object.entries(reasons).sort((a,b) => b[1] - a[1]);
-    return sorted[0] ? sorted[0][0] : 'None';
-  });
-  
-  const topReasonCounts = deptKeys.map(k => {
-    const reasons = depts[k].reasons;
-    const sorted = Object.entries(reasons).sort((a,b) => b[1] - a[1]);
-    return sorted[0] ? sorted[0][1] : 0;
-  });
-
-  const ctx2 = document.getElementById('deptReasonChart')?.getContext('2d');
-  if (ctx2) {
-    if (deptReasonInst) deptReasonInst.destroy();
-    deptReasonInst = new Chart(ctx2, {
-      type: 'bar',
-      data: {
-        labels: deptKeys,
-        datasets: [{
-          label: 'Top Reason Count',
-          data: topReasonCounts,
-          backgroundColor: 'rgba(200,168,75,0.75)',
-          borderRadius: 0,
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true, 
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#0f1f3d', 
-            titleColor: '#c8a84b', 
-            bodyColor: '#fff', 
-            padding: 10,
-            callbacks: {
-              label: (i) => {
-                const dept = deptKeys[i.dataIndex];
-                const reason = topReasons[i.dataIndex];
-                return `${reason}: ${i.raw} (${Math.round((i.raw/depts[dept].total)*100)}%)`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            beginAtZero: true,
-            ticks: { 
-              stepSize: 1,
-              font:{size:10}, 
-              color:'#6b6559' 
-            },
-            grid: { color:'rgba(0,0,0,.05)' }
-          },
-          y: { 
-            ticks: { font:{size:10}, color:'#1c1c1c' }, 
-            grid:{display:false} 
-          }
-        }
-      }
-    });
-  }
 
   // Department summary table
   const tbody = document.getElementById('department-tbody');
