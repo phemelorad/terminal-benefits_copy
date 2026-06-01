@@ -1689,25 +1689,6 @@ async function loadTrackingIndicators() {
       });
     }
   }
-    
-    filteredApps = allApps.filter(a => {
-      if (!a.submitted_at) return false;
-      const monthKey = a.submitted_at.substring(0, 7);
-      return quarterMonths.includes(monthKey);
-    });
-  } else {
-    // Get selected year
-    const selectedYear = yearSelect.value;
-    if (!selectedYear) {
-      console.warn('No year selected');
-      return;
-    }
-    filteredApps = allApps.filter(a => {
-      if (!a.submitted_at) return false;
-      const year = new Date(a.submitted_at).getFullYear();
-      return year === parseInt(selectedYear);
-    });
-  }
 
   console.log('Tracking Indicators - Filtered Apps:', filteredApps.length);
   console.log('Sample app data:', filteredApps[0]); // Show first app structure
